@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"D:\\\\pro\\\\vulhub-cli\" status)",
+      "Bash(git -C \"D:\\\\pro\\\\vulhub-cli\" log --all --format=\"%H %s\")",
+      "Bash(git -C \"D:\\\\pro\\\\vulhub-cli\" remote -v)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:uber-go.github.io)",
+      "Bash(go mod init:*)",
+      "Bash(go mod tidy:*)",
+      "Bash(go build:*)",
+      "Bash(./bin/vulhub.exe:*)"
+    ]
+  }
+}

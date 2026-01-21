@@ -4,6 +4,44 @@
 
 This document defines the requirements for the Vulhub CLI tool. The tool aims to simplify the usage of the Vulhub security lab platform, allowing users to start specific vulnerability environments without learning Docker Compose commands or downloading the complete Vulhub project.
 
+## Technology Stack
+
+### Programming Language
+
+- **Go** (1.21+)
+
+### Third-Party Libraries
+
+If the following functionalities are required, the listed third-party libraries SHOULD be preferred to implement them:
+
+| Category | Library | Purpose |
+|----------|---------|---------|
+| CLI Framework | `github.com/urfave/cli/v3` | Command-line interface implementation |
+| Dependency Injection | `github.com/uber-go/fx` | Dependency management and lifecycle |
+| TOML Parsing | `github.com/BurntSushi/toml` | Parsing `environments.toml` and `config.toml` |
+| HTTP Client | `github.com/go-resty/resty/v3` | Enhanced HTTP operations |
+| GitHub Client | `github.com/google/go-github` | GitHub API integration |
+| Utility Functions | `github.com/samber/lo` | Functional programming helpers |
+
+### Standard Library Packages
+
+The following Go standard library packages SHALL be used:
+
+| Category | Packages |
+|----------|----------|
+| File Operations | `os`, `path/filepath`, `io` |
+| Concurrency | `context`, `sync` |
+| Logging | `log/slog` |
+| Testing | `testing` |
+
+### Library Selection Guidelines
+
+1. When implementing any feature, MUST first check if the required functionality can be achieved using the libraries listed above
+2. If a library is not listed but is required, preference SHALL be given to well-maintained, widely-adopted libraries
+3. Standard library packages SHALL be preferred over third-party alternatives when functionality is equivalent
+
+---
+
 ## Requirements
 
 ### Requirement 1: Initialization Commands
