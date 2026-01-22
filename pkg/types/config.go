@@ -1,5 +1,7 @@
 package types
 
+import "time"
+
 // Config represents the main configuration for vulhub-cli
 type Config struct {
 	// Version is the configuration version
@@ -13,6 +15,18 @@ type Config struct {
 
 	// Docker contains Docker-related configuration
 	Docker DockerConfig `toml:"docker"`
+
+	// Sync contains sync-related configuration
+	Sync SyncConfig `toml:"sync"`
+}
+
+// SyncConfig contains sync-related configuration
+type SyncConfig struct {
+	// LastSyncTime is the last time environments were synced
+	LastSyncTime time.Time `toml:"last_sync_time,omitempty"`
+
+	// AutoSyncDays is the number of days after which to prompt for sync (default: 7)
+	AutoSyncDays int `toml:"auto_sync_days,omitempty"`
 }
 
 // GitHubConfig contains GitHub-related configuration
@@ -61,6 +75,9 @@ func DefaultConfig() Config {
 		Docker: DockerConfig{
 			ComposeCommand: "docker compose",
 			Timeout:        300,
+		},
+		Sync: SyncConfig{
+			AutoSyncDays: 7,
 		},
 	}
 }

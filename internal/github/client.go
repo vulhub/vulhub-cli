@@ -9,9 +9,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/go-resty/resty/v2"
 	gh "github.com/google/go-github/v68/github"
 	"github.com/vulhub/vulhub-cli/pkg/types"
+	"resty.dev/v3"
 )
 
 const (
@@ -99,7 +99,7 @@ func (c *GitHubClient) DownloadFile(ctx context.Context, owner, repo, path, ref 
 		return nil, fmt.Errorf("failed to download file: status %d", resp.StatusCode())
 	}
 
-	return resp.Body(), nil
+	return resp.Bytes(), nil
 }
 
 // DownloadDirectory downloads all files in a directory from a repository

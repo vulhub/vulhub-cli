@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -71,6 +73,34 @@ func (e *Executor) ExecuteWithOutput(ctx context.Context, workDir string, args .
 	}
 
 	return result.Stdout, nil
+}
+
+// ExecuteStreaming executes a docker compose command with real-time output to stdout/stderr
+func (e *Executor) ExecuteStreaming(ctx context.Context, workDir string, stdout, stderr io.Writer, args ...string) error {
+	cmdParts := strings.Fields(e.composeCommand)
+	cmdParts = append(cmdParts, args...)
+
+	cmd := exec.CommandContext(ctx, cmdParts[0], cmdParts[1:]...)
+	cmd.Dir = workDir
+
+	if stdout == nil {
+		stdout = os.Stdout
+	}
+	if stderr == nil {
+		stderr = os.Stderr
+	}
+
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+
+	if err := cmd.Run(); err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			return fmt.Errorf("command failed with exit code %d", exitErr.ExitCode())
+		}
+		return fmt.Errorf("failed to execute command: %w", err)
+	}
+
+	return nil
 }
 
 // CheckDockerAvailable checks if Docker is available

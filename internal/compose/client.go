@@ -121,13 +121,9 @@ func (c *ComposeClient) Start(ctx context.Context, workDir string, options Start
 		args = append(args, "--pull", "always")
 	}
 
-	result, err := c.executor.Execute(ctx, workDir, args...)
-	if err != nil {
+	// Use streaming to show real-time output (image pulls, container starts, etc.)
+	if err := c.executor.ExecuteStreaming(ctx, workDir, nil, nil, args...); err != nil {
 		return fmt.Errorf("failed to start environment: %w", err)
-	}
-
-	if result.ExitCode != 0 {
-		return fmt.Errorf("failed to start environment: %s", result.Stderr)
 	}
 
 	return nil
@@ -143,13 +139,9 @@ func (c *ComposeClient) Stop(ctx context.Context, workDir string, options StopOp
 		args = append(args, "-t", fmt.Sprintf("%d", options.Timeout))
 	}
 
-	result, err := c.executor.Execute(ctx, workDir, args...)
-	if err != nil {
+	// Use streaming to show real-time output
+	if err := c.executor.ExecuteStreaming(ctx, workDir, nil, nil, args...); err != nil {
 		return fmt.Errorf("failed to stop environment: %w", err)
-	}
-
-	if result.ExitCode != 0 {
-		return fmt.Errorf("failed to stop environment: %s", result.Stderr)
 	}
 
 	return nil
@@ -165,13 +157,9 @@ func (c *ComposeClient) Restart(ctx context.Context, workDir string, options Res
 		args = append(args, "-t", fmt.Sprintf("%d", options.Timeout))
 	}
 
-	result, err := c.executor.Execute(ctx, workDir, args...)
-	if err != nil {
+	// Use streaming to show real-time output
+	if err := c.executor.ExecuteStreaming(ctx, workDir, nil, nil, args...); err != nil {
 		return fmt.Errorf("failed to restart environment: %w", err)
-	}
-
-	if result.ExitCode != 0 {
-		return fmt.Errorf("failed to restart environment: %s", result.Stderr)
 	}
 
 	return nil
@@ -301,13 +289,9 @@ func (c *ComposeClient) Down(ctx context.Context, workDir string, options DownOp
 		args = append(args, "-t", fmt.Sprintf("%d", options.Timeout))
 	}
 
-	result, err := c.executor.Execute(ctx, workDir, args...)
-	if err != nil {
+	// Use streaming to show real-time output
+	if err := c.executor.ExecuteStreaming(ctx, workDir, nil, nil, args...); err != nil {
 		return fmt.Errorf("failed to down environment: %w", err)
-	}
-
-	if result.ExitCode != 0 {
-		return fmt.Errorf("failed to down environment: %s", result.Stderr)
 	}
 
 	return nil
@@ -317,13 +301,9 @@ func (c *ComposeClient) Down(ctx context.Context, workDir string, options DownOp
 func (c *ComposeClient) Pull(ctx context.Context, workDir string) error {
 	c.logger.Debug("pulling images", "workDir", workDir)
 
-	result, err := c.executor.Execute(ctx, workDir, "pull")
-	if err != nil {
+	// Use streaming to show real-time download progress
+	if err := c.executor.ExecuteStreaming(ctx, workDir, nil, nil, "pull"); err != nil {
 		return fmt.Errorf("failed to pull images: %w", err)
-	}
-
-	if result.ExitCode != 0 {
-		return fmt.Errorf("failed to pull images: %s", result.Stderr)
 	}
 
 	return nil

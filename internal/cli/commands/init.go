@@ -77,6 +77,11 @@ func runInit(ctx context.Context, cfgMgr config.Manager, downloader *github.Down
 		return fmt.Errorf("failed to save environments list: %w", err)
 	}
 
+	// Update last sync time
+	if err := cfgMgr.UpdateLastSyncTime(ctx); err != nil {
+		return fmt.Errorf("failed to update sync time: %w", err)
+	}
+
 	// Ensure environments directory exists
 	if err := cfgMgr.Paths().EnsureEnvironmentsDir(); err != nil {
 		return fmt.Errorf("failed to create environments directory: %w", err)

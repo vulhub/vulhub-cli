@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -30,9 +31,16 @@ func NewTableWithWriter(w io.Writer) *Table {
 
 // PrintEnvironments prints a list of environments in table format
 func (t *Table) PrintEnvironments(envs []types.Environment) {
+	fmt.Fprint(t.writer, t.FormatEnvironments(envs))
+}
+
+// FormatEnvironments returns a formatted list of environments as a string
+func (t *Table) FormatEnvironments(envs []types.Environment) string {
+	var buf bytes.Buffer
+
 	if len(envs) == 0 {
-		fmt.Fprintln(t.writer, "No environments found.")
-		return
+		fmt.Fprintln(&buf, "No environments found.")
+		return buf.String()
 	}
 
 	// Calculate column widths
@@ -65,8 +73,8 @@ func (t *Table) PrintEnvironments(envs []types.Environment) {
 
 	// Print header
 	format := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds\n", pathWidth, cveWidth, appWidth)
-	fmt.Fprintf(t.writer, format, "PATH", "CVE", "APP")
-	fmt.Fprintln(t.writer, strings.Repeat("-", pathWidth+cveWidth+appWidth+4))
+	fmt.Fprintf(&buf, format, "PATH", "CVE", "APP")
+	fmt.Fprintln(&buf, strings.Repeat("-", pathWidth+cveWidth+appWidth+4))
 
 	// Print rows
 	for _, env := range envs {
@@ -77,10 +85,12 @@ func (t *Table) PrintEnvironments(envs []types.Environment) {
 		}
 		app := truncate(env.App, appWidth)
 
-		fmt.Fprintf(t.writer, format, path, cve, app)
+		fmt.Fprintf(&buf, format, path, cve, app)
 	}
 
-	fmt.Fprintf(t.writer, "\nTotal: %d environments\n", len(envs))
+	fmt.Fprintf(&buf, "\nTotal: %d environments\n", len(envs))
+
+	return buf.String()
 }
 
 // PrintEnvironmentStatuses prints a list of environment statuses
@@ -138,33 +148,41 @@ func (t *Table) PrintContainerStatuses(containers []types.ContainerStatus) {
 
 // PrintEnvironmentInfo prints detailed environment information
 func (t *Table) PrintEnvironmentInfo(info *types.EnvironmentInfo) {
+	fmt.Fprint(t.writer, t.FormatEnvironmentInfo(info))
+}
+
+// FormatEnvironmentInfo returns formatted environment information as a string
+func (t *Table) FormatEnvironmentInfo(info *types.EnvironmentInfo) string {
+	var buf bytes.Buffer
 	env := info.Environment
 
-	fmt.Fprintln(t.writer, strings.Repeat("=", 60))
-	fmt.Fprintf(t.writer, "Environment: %s\n", env.Path)
-	fmt.Fprintln(t.writer, strings.Repeat("=", 60))
+	fmt.Fprintln(&buf, strings.Repeat("=", 60))
+	fmt.Fprintf(&buf, "Environment: %s\n", env.Path)
+	fmt.Fprintln(&buf, strings.Repeat("=", 60))
 
-	fmt.Fprintf(t.writer, "Name:        %s\n", env.Name)
+	fmt.Fprintf(&buf, "Name:        %s\n", env.Name)
 	if len(env.CVE) > 0 {
-		fmt.Fprintf(t.writer, "CVE:         %s\n", strings.Join(env.CVE, ", "))
+		fmt.Fprintf(&buf, "CVE:         %s\n", strings.Join(env.CVE, ", "))
 	}
-	fmt.Fprintf(t.writer, "Application: %s\n", env.App)
+	fmt.Fprintf(&buf, "Application: %s\n", env.App)
 
 	if len(env.Tags) > 0 {
-		fmt.Fprintf(t.writer, "Tags:        %s\n", strings.Join(env.Tags, ", "))
+		fmt.Fprintf(&buf, "Tags:        %s\n", strings.Join(env.Tags, ", "))
 	}
 
-	fmt.Fprintf(t.writer, "Downloaded:  %v\n", info.Downloaded)
+	fmt.Fprintf(&buf, "Downloaded:  %v\n", info.Downloaded)
 	if info.Downloaded {
-		fmt.Fprintf(t.writer, "Local Path:  %s\n", info.LocalPath)
+		fmt.Fprintf(&buf, "Local Path:  %s\n", info.LocalPath)
 	}
 
 	if info.Readme != "" {
-		fmt.Fprintln(t.writer, strings.Repeat("-", 60))
-		fmt.Fprintln(t.writer, "README:")
-		fmt.Fprintln(t.writer, strings.Repeat("-", 60))
-		fmt.Fprintln(t.writer, info.Readme)
+		fmt.Fprintln(&buf, strings.Repeat("-", 60))
+		fmt.Fprintln(&buf, "README:")
+		fmt.Fprintln(&buf, strings.Repeat("-", 60))
+		fmt.Fprintln(&buf, info.Readme)
 	}
+
+	return buf.String()
 }
 
 // PrintSuccess prints a success message

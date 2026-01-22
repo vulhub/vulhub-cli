@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/vulhub/vulhub-cli/pkg/types"
@@ -35,6 +36,15 @@ type Manager interface {
 
 	// IsInitialized checks if the configuration is initialized
 	IsInitialized() bool
+
+	// NeedSync checks if the environments list needs to be synced
+	NeedSync() bool
+
+	// GetLastSyncTime returns the last sync time
+	GetLastSyncTime() time.Time
+
+	// UpdateLastSyncTime updates the last sync time to now
+	UpdateLastSyncTime(ctx context.Context) error
 }
 
 // ConfigManager implements the Manager interface
@@ -189,4 +199,51 @@ func (m *ConfigManager) Paths() *Paths {
 // IsInitialized checks if the configuration is initialized
 func (m *ConfigManager) IsInitialized() bool {
 	return m.paths.ConfigExists() && m.paths.EnvironmentsFileExists()
+}
+
+// NeedSync checks if the environments list needs to be synced
+func (m *ConfigManager) NeedSync() bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if m.config == nil {
+		return false
+	}
+
+	lastSync := m.config.Sync.LastSyncTime
+	if lastSync.IsZero() {
+		return true
+	}
+
+	autoSyncDays := m.config.Sync.AutoSyncDays
+	if autoSyncDays <= 0 {
+		autoSyncDays = 7 // default to 7 days
+	}
+
+	return time.Since(lastSync) > time.Duration(autoSyncDays)*24*time.Hour
+}
+
+// GetLastSyncTime returns the last sync time
+func (m *ConfigManager) GetLastSyncTime() time.Time {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if m.config == nil {
+		return time.Time{}
+	}
+
+	return m.config.Sync.LastSyncTime
+}
+
+// UpdateLastSyncTime updates the last sync time to now
+func (m *ConfigManager) UpdateLastSyncTime(ctx context.Context) error {
+	m.mu.Lock()
+	if m.config == nil {
+		cfg := types.DefaultConfig()
+		m.config = &cfg
+	}
+	m.config.Sync.LastSyncTime = time.Now()
+	m.mu.Unlock()
+
+	return m.Save(ctx)
 }

@@ -13,15 +13,15 @@ import (
 	"github.com/vulhub/vulhub-cli/pkg/types"
 )
 
-// StopCommand creates the stop command
-func StopCommand(
+// DownCommand creates the down command
+func DownCommand(
 	cfgMgr config.Manager,
 	envMgr environment.Manager,
 	res resolver.Resolver,
 ) *cli.Command {
 	return &cli.Command{
-		Name:      "stop",
-		Usage:     "Stop a running vulnerability environment",
+		Name:      "down",
+		Usage:     "Completely remove an environment (containers, volumes, and local files)",
 		ArgsUsage: "[keyword]",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
@@ -36,12 +36,12 @@ func StopCommand(
 				return fmt.Errorf("please provide a keyword (CVE number, path, or application name)")
 			}
 
-			return runStop(ctx, cfgMgr, envMgr, res, keyword, cmd.Bool("yes"))
+			return runDown(ctx, cfgMgr, envMgr, res, keyword, cmd.Bool("yes"))
 		},
 	}
 }
 
-func runStop(
+func runDown(
 	ctx context.Context,
 	cfgMgr config.Manager,
 	envMgr environment.Manager,
@@ -51,6 +51,11 @@ func runStop(
 ) error {
 	table := ui.NewTable()
 	selector := ui.NewSelector()
+
+	// Check if initialized
+	if !cfgMgr.IsInitialized() {
+		return fmt.Errorf("vulhub-cli is not initialized, please run 'vulhub init' first")
+	}
 
 	// Resolve keyword
 	result, err := res.Resolve(ctx, keyword)
@@ -78,14 +83,14 @@ func runStop(
 		env = result.Environment
 	}
 
-	// Stop the environment
-	table.PrintInfo(fmt.Sprintf("Stopping environment: %s", env.Path))
+	// Down the environment
+	table.PrintInfo(fmt.Sprintf("Stopping and removing environment: %s", env.Path))
 
-	if err := envMgr.Stop(ctx, *env); err != nil {
+	if err := envMgr.Down(ctx, *env); err != nil {
 		return err
 	}
 
-	table.PrintSuccess(fmt.Sprintf("Environment '%s' stopped successfully!", env.Path))
+	table.PrintSuccess(fmt.Sprintf("Environment '%s' has been stopped and removed!", env.Path))
 
 	return nil
 }

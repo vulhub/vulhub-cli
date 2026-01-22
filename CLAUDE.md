@@ -14,7 +14,7 @@ vulhub-cli is a Go command-line tool that simplifies interaction with the Vulhub
 - **CLI Framework**: `github.com/urfave/cli/v3`
 - **Dependency Injection**: `github.com/uber-go/fx`
 - **TOML Parsing**: `github.com/BurntSushi/toml`
-- **HTTP Client**: `github.com/go-resty/resty/v3`
+- **HTTP Client**: `resty.dev/v3`
 - **GitHub API**: `github.com/google/go-github`
 - **Utilities**: `github.com/samber/lo`
 - **Logging**: `log/slog` (standard library)
@@ -55,8 +55,9 @@ User configuration stored in `~/.vulhub/`:
 | `vulhub syncup` | Update environment list from GitHub |
 | `vulhub start [keyword]` | Start a vulnerability environment |
 | `vulhub stop [keyword]` | Stop a running environment |
+| `vulhub down [keyword]` | Completely remove an environment (containers, volumes, local files) |
 | `vulhub restart [keyword]` | Restart an environment |
-| `vulhub list` | List running environments |
+| `vulhub list` | List all downloaded environments |
 | `vulhub list-available` | List all available environments |
 | `vulhub search [keyword]` | Search for environments |
 | `vulhub info [keyword]` | Show environment details |

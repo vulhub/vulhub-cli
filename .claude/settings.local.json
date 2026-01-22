@@ -10,7 +10,9 @@
       "Bash(go mod init:*)",
       "Bash(go mod tidy:*)",
       "Bash(go build:*)",
-      "Bash(./bin/vulhub.exe:*)"
+      "Bash(./bin/vulhub.exe:*)",
+      "Bash(go get:*)",
+      "Bash(go test:*)"
     ]
   }
 }

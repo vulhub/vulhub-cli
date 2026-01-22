@@ -1,25 +1,18 @@
 package ui
 
 import (
-	"bufio"
 	"fmt"
-	"os"
-	"strconv"
-	"strings"
 
+	"github.com/charmbracelet/huh"
 	"github.com/vulhub/vulhub-cli/pkg/types"
 )
 
 // Selector provides interactive selection functionality
-type Selector struct {
-	reader *bufio.Reader
-}
+type Selector struct{}
 
 // NewSelector creates a new Selector
 func NewSelector() *Selector {
-	return &Selector{
-		reader: bufio.NewReader(os.Stdin),
-	}
+	return &Selector{}
 }
 
 // SelectEnvironment prompts the user to select an environment from a list
@@ -32,95 +25,74 @@ func (s *Selector) SelectEnvironment(envs []types.Environment, prompt string) (*
 		return &envs[0], nil
 	}
 
-	// Display the list
-	fmt.Println()
-	fmt.Println(prompt)
-	fmt.Println(strings.Repeat("-", 60))
-
+	// Build options for huh.Select
+	options := make([]huh.Option[int], len(envs))
 	for i, env := range envs {
 		cve := "-"
 		if len(env.CVE) > 0 {
 			cve = env.CVE[0]
 		}
-		fmt.Printf("  [%d] %-30s %s\n", i+1, env.Path, cve)
+		label := fmt.Sprintf("%-30s %s", env.Path, cve)
+		options[i] = huh.NewOption(label, i)
 	}
 
-	fmt.Println(strings.Repeat("-", 60))
-	fmt.Printf("Enter number (1-%d) or 'q' to quit: ", len(envs))
+	var selected int
+	err := huh.NewSelect[int]().
+		Title(prompt).
+		Options(options...).
+		Value(&selected).
+		Run()
 
-	// Read user input
-	input, err := s.reader.ReadString('\n')
 	if err != nil {
-		return nil, fmt.Errorf("failed to read input: %w", err)
+		if err == huh.ErrUserAborted {
+			return nil, fmt.Errorf("selection cancelled")
+		}
+		return nil, fmt.Errorf("selection failed: %w", err)
 	}
 
-	input = strings.TrimSpace(input)
-
-	// Check for quit
-	if strings.ToLower(input) == "q" {
-		return nil, fmt.Errorf("selection cancelled")
-	}
-
-	// Parse number
-	num, err := strconv.Atoi(input)
-	if err != nil {
-		return nil, fmt.Errorf("invalid input: please enter a number")
-	}
-
-	// Validate range
-	if num < 1 || num > len(envs) {
-		return nil, fmt.Errorf("invalid selection: please enter a number between 1 and %d", len(envs))
-	}
-
-	return &envs[num-1], nil
+	return &envs[selected], nil
 }
 
 // Confirm prompts the user for confirmation
 func (s *Selector) Confirm(prompt string, defaultYes bool) (bool, error) {
-	var hint string
-	if defaultYes {
-		hint = "[Y/n]"
-	} else {
-		hint = "[y/N]"
-	}
+	var confirmed bool
 
-	fmt.Printf("%s %s: ", prompt, hint)
+	err := huh.NewConfirm().
+		Title(prompt).
+		Affirmative("Yes").
+		Negative("No").
+		Value(&confirmed).
+		Run()
 
-	input, err := s.reader.ReadString('\n')
 	if err != nil {
-		return false, fmt.Errorf("failed to read input: %w", err)
+		if err == huh.ErrUserAborted {
+			return false, nil
+		}
+		return false, fmt.Errorf("confirmation failed: %w", err)
 	}
 
-	input = strings.TrimSpace(strings.ToLower(input))
-
-	if input == "" {
-		return defaultYes, nil
-	}
-
-	switch input {
-	case "y", "yes":
-		return true, nil
-	case "n", "no":
-		return false, nil
-	default:
-		return false, fmt.Errorf("invalid input: please enter 'y' or 'n'")
-	}
+	return confirmed, nil
 }
 
 // PromptString prompts the user for a string input
 func (s *Selector) PromptString(prompt string, defaultValue string) (string, error) {
+	var input string
+
+	inputField := huh.NewInput().
+		Title(prompt).
+		Value(&input)
+
 	if defaultValue != "" {
-		fmt.Printf("%s [%s]: ", prompt, defaultValue)
-	} else {
-		fmt.Printf("%s: ", prompt)
+		inputField.Placeholder(defaultValue)
 	}
 
-	input, err := s.reader.ReadString('\n')
+	err := inputField.Run()
 	if err != nil {
-		return "", fmt.Errorf("failed to read input: %w", err)
+		if err == huh.ErrUserAborted {
+			return "", fmt.Errorf("input cancelled")
+		}
+		return "", fmt.Errorf("input failed: %w", err)
 	}
-
-	input = strings.TrimSpace(input)
 
 	if input == "" {
 		return defaultValue, nil

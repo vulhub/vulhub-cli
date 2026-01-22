@@ -42,6 +42,9 @@ type Manager interface {
 	// Stop stops an environment
 	Stop(ctx context.Context, env types.Environment) error
 
+	// Down stops and removes containers, networks, and volumes for an environment
+	Down(ctx context.Context, env types.Environment) error
+
 	// Restart restarts an environment
 	Restart(ctx context.Context, env types.Environment) error
 
@@ -53,6 +56,9 @@ type Manager interface {
 
 	// ListRunning lists all running environments
 	ListRunning(ctx context.Context) ([]types.EnvironmentStatus, error)
+
+	// ListDownloaded lists all downloaded environments with their status
+	ListDownloaded(ctx context.Context) ([]types.EnvironmentStatus, error)
 
 	// GetInfo gets detailed information about an environment
 	GetInfo(ctx context.Context, env types.Environment) (*types.EnvironmentInfo, error)
@@ -132,6 +138,33 @@ func (m *EnvironmentManager) Stop(ctx context.Context, env types.Environment) er
 
 	if err := m.composeClient.Stop(ctx, workDir, compose.StopOptions{}); err != nil {
 		return fmt.Errorf("failed to stop environment: %w", err)
+	}
+
+	return nil
+}
+
+// Down stops and removes containers, networks, and volumes for an environment,
+// and also removes the local environment files
+func (m *EnvironmentManager) Down(ctx context.Context, env types.Environment) error {
+	workDir := m.configMgr.Paths().EnvironmentDir(env.Path)
+
+	if !m.IsDownloaded(env) {
+		return fmt.Errorf("environment %s is not downloaded", env.Path)
+	}
+
+	m.logger.Info("downing environment", "path", env.Path)
+
+	downOpts := compose.DownOptions{
+		RemoveVolumes: true,
+	}
+
+	if err := m.composeClient.Down(ctx, workDir, downOpts); err != nil {
+		return fmt.Errorf("failed to down environment: %w", err)
+	}
+
+	// Remove local environment files
+	if err := os.RemoveAll(workDir); err != nil {
+		return fmt.Errorf("failed to remove environment files: %w", err)
 	}
 
 	return nil
@@ -240,6 +273,39 @@ func (m *EnvironmentManager) ListRunning(ctx context.Context) ([]types.Environme
 		if status.Running {
 			statuses = append(statuses, *status)
 		}
+	}
+
+	return statuses, nil
+}
+
+// ListDownloaded lists all downloaded environments with their status
+func (m *EnvironmentManager) ListDownloaded(ctx context.Context) ([]types.EnvironmentStatus, error) {
+	// Load environment list
+	envList, err := m.configMgr.LoadEnvironments(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load environments: %w", err)
+	}
+
+	var statuses []types.EnvironmentStatus
+
+	// Check each downloaded environment
+	envsDir := m.configMgr.Paths().EnvironmentsDir()
+	if _, err := os.Stat(envsDir); os.IsNotExist(err) {
+		return statuses, nil
+	}
+
+	for _, env := range envList.Environment {
+		if !m.IsDownloaded(env) {
+			continue
+		}
+
+		status, err := m.Status(ctx, env)
+		if err != nil {
+			m.logger.Debug("failed to get status", "path", env.Path, "error", err)
+			continue
+		}
+
+		statuses = append(statuses, *status)
 	}
 
 	return statuses, nil

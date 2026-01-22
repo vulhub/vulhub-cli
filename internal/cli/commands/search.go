@@ -8,30 +8,23 @@ import (
 
 	"github.com/vulhub/vulhub-cli/internal/cli/ui"
 	"github.com/vulhub/vulhub-cli/internal/config"
-	"github.com/vulhub/vulhub-cli/internal/resolver"
+	"github.com/vulhub/vulhub-cli/internal/environment"
+	"github.com/vulhub/vulhub-cli/internal/github"
 )
 
 // SearchCommand creates the search command
-func SearchCommand(cfgMgr config.Manager, res resolver.Resolver) *cli.Command {
+func SearchCommand(cfgMgr config.Manager, envMgr environment.Manager, downloader *github.Downloader) *cli.Command {
 	return &cli.Command{
 		Name:      "search",
 		Usage:     "Search for vulnerability environments",
 		ArgsUsage: "[keyword]",
-		Flags: []cli.Flag{
-			&cli.IntFlag{
-				Name:    "limit",
-				Aliases: []string{"n"},
-				Usage:   "Limit number of results",
-				Value:   20,
-			},
-		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			keyword := cmd.Args().First()
 			if keyword == "" {
-				return fmt.Errorf("please provide a search keyword")
+				keyword = ""
 			}
 
-			return runSearch(ctx, cfgMgr, res, keyword, int(cmd.Int("limit")))
+			return runSearch(ctx, cfgMgr, envMgr, downloader, keyword)
 		},
 	}
 }
@@ -39,53 +32,60 @@ func SearchCommand(cfgMgr config.Manager, res resolver.Resolver) *cli.Command {
 func runSearch(
 	ctx context.Context,
 	cfgMgr config.Manager,
-	res resolver.Resolver,
+	envMgr environment.Manager,
+	downloader *github.Downloader,
 	keyword string,
-	limit int,
 ) error {
-	table := ui.NewTable()
-
-	// Check if initialized
-	if !cfgMgr.IsInitialized() {
-		return fmt.Errorf("vulhub-cli is not initialized, please run 'vulhub init' first")
+	// Check if initialized, prompt to initialize if not
+	initialized, err := EnsureInitialized(ctx, cfgMgr, downloader)
+	if err != nil {
+		return err
+	}
+	if !initialized {
+		return nil
 	}
 
-	// Resolve keyword
-	result, err := res.Resolve(ctx, keyword)
+	// Load all environments
+	envList, err := cfgMgr.LoadEnvironments(ctx)
 	if err != nil {
 		return err
 	}
 
-	if result.HasNoMatches() {
-		fmt.Printf("No environments found matching '%s'.\n", keyword)
-		fmt.Println()
-		fmt.Println("Search tips:")
-		fmt.Println("  - Try a CVE number: vulhub search CVE-2021-44228")
-		fmt.Println("  - Try an application name: vulhub search log4j")
-		fmt.Println("  - Try a partial keyword: vulhub search apache")
-		return nil
+	envs := envList.Environment
+
+	browser := ui.NewEnvironmentBrowser()
+	table := ui.NewTable()
+	pager := ui.NewPager()
+
+	// Loop: browse -> info -> back to browse
+	for {
+		result, err := browser.BrowseWithOptions(envs, ui.BrowseOptions{
+			Title:         "Search Environments",
+			InitialSearch: keyword,
+		})
+		if err != nil {
+			return err
+		}
+
+		// User quit the browser
+		if result.Quit || result.Selected == nil {
+			return nil
+		}
+
+		// User selected an environment, show its info
+		info, err := envMgr.GetInfo(ctx, *result.Selected)
+		if err != nil {
+			return err
+		}
+
+		// Display info using pager (will return when user presses q/esc)
+		content := table.FormatEnvironmentInfo(info)
+		if err := pager.DisplayWithContent(fmt.Sprintf("Environment: %s", result.Selected.Path), content); err != nil {
+			return err
+		}
+
+		// After pager exits, loop back to browser
+		// Clear the initial search so user can search again
+		keyword = ""
 	}
-
-	envs := result.GetMatchedEnvironments()
-
-	// Apply limit
-	total := len(envs)
-	if limit > 0 && limit < len(envs) {
-		envs = envs[:limit]
-	}
-
-	fmt.Printf("Found %d environment(s) matching '%s'", total, keyword)
-	if total > len(envs) {
-		fmt.Printf(" (showing first %d)", len(envs))
-	}
-	fmt.Println()
-	fmt.Println()
-
-	table.PrintEnvironments(envs)
-
-	if total > len(envs) {
-		fmt.Printf("\nUse --limit to show more results: vulhub search %s --limit %d\n", keyword, total)
-	}
-
-	return nil
 }

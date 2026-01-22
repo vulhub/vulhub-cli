@@ -19,7 +19,7 @@ If the following functionalities are required, the listed third-party libraries 
 | CLI Framework | `github.com/urfave/cli/v3` | Command-line interface implementation |
 | Dependency Injection | `github.com/uber-go/fx` | Dependency management and lifecycle |
 | TOML Parsing | `github.com/BurntSushi/toml` | Parsing `environments.toml` and `config.toml` |
-| HTTP Client | `github.com/go-resty/resty/v3` | Enhanced HTTP operations |
+| HTTP Client | `resty.dev/v3` | Enhanced HTTP operations |
 | GitHub Client | `github.com/google/go-github` | GitHub API integration |
 | Utility Functions | `github.com/samber/lo` | Functional programming helpers |
 
@@ -81,8 +81,9 @@ The following files SHALL be created in `~/.vulhub/` directory:
 |---------|-------------|
 | `vulhub start [keyword]` | Start a vulnerability environment |
 | `vulhub stop [keyword]` | Stop a running vulnerability environment |
+| `vulhub down [keyword]` | Completely remove an environment (containers, volumes, and local files) |
 | `vulhub restart [keyword]` | Restart a vulnerability environment |
-| `vulhub list` | List all running vulnerability environments |
+| `vulhub list` | List all downloaded vulnerability environments |
 | `vulhub list-available` | List all available vulnerability environments |
 | `vulhub status` | Display status of all environments |
 | `vulhub search [keyword]` | Search for vulnerability environments |
@@ -266,6 +267,14 @@ type GitHubClient interface {
 1. Resolve keyword using Requirement 3 logic
 2. Call Docker Compose package to stop the environment
 3. Display confirmation message
+
+#### Subcommand: `down [keyword]`
+
+1. Resolve keyword using Requirement 3 logic
+2. If multiple matches, display interactive selection
+3. Call Docker Compose package to stop and remove containers, networks, and volumes (`docker compose down -v`)
+4. Remove local environment files (docker-compose.yml, etc.)
+5. Display confirmation message
 
 #### Subcommand: `restart [keyword]`
 
