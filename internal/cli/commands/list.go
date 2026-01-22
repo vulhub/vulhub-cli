@@ -36,6 +36,11 @@ func runList(ctx context.Context, cfgMgr config.Manager, envMgr environment.Mana
 		return nil
 	}
 
+	// Check if sync is needed
+	if _, err := CheckAndPromptSync(ctx, cfgMgr, downloader); err != nil {
+		return err
+	}
+
 	// Get all downloaded environments
 	statuses, err := envMgr.ListDownloaded(ctx)
 	if err != nil {

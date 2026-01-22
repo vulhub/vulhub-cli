@@ -76,6 +76,11 @@ func runInfo(
 		return nil
 	}
 
+	// Check if sync is needed
+	if _, err := CheckAndPromptSync(ctx, cfgMgr, downloader); err != nil {
+		return err
+	}
+
 	// Resolve keyword
 	result, err := res.Resolve(ctx, keyword)
 	if err != nil {

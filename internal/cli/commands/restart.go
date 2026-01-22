@@ -9,6 +9,7 @@ import (
 	"github.com/vulhub/vulhub-cli/internal/cli/ui"
 	"github.com/vulhub/vulhub-cli/internal/config"
 	"github.com/vulhub/vulhub-cli/internal/environment"
+	"github.com/vulhub/vulhub-cli/internal/github"
 	"github.com/vulhub/vulhub-cli/internal/resolver"
 	"github.com/vulhub/vulhub-cli/pkg/types"
 )
@@ -18,6 +19,7 @@ func RestartCommand(
 	cfgMgr config.Manager,
 	envMgr environment.Manager,
 	res resolver.Resolver,
+	downloader *github.Downloader,
 ) *cli.Command {
 	return &cli.Command{
 		Name:      "restart",
@@ -36,7 +38,7 @@ func RestartCommand(
 				return fmt.Errorf("please provide a keyword (CVE number, path, or application name)")
 			}
 
-			return runRestart(ctx, cfgMgr, envMgr, res, keyword, cmd.Bool("yes"))
+			return runRestart(ctx, cfgMgr, envMgr, res, downloader, keyword, cmd.Bool("yes"))
 		},
 	}
 }
@@ -46,15 +48,25 @@ func runRestart(
 	cfgMgr config.Manager,
 	envMgr environment.Manager,
 	res resolver.Resolver,
+	downloader *github.Downloader,
 	keyword string,
 	skipConfirm bool,
 ) error {
 	table := ui.NewTable()
 	selector := ui.NewSelector()
 
-	// Check if initialized
-	if !cfgMgr.IsInitialized() {
-		return fmt.Errorf("vulhub-cli is not initialized, please run 'vulhub init' first")
+	// Check if initialized, prompt to initialize if not
+	initialized, err := EnsureInitialized(ctx, cfgMgr, downloader)
+	if err != nil {
+		return err
+	}
+	if !initialized {
+		return nil
+	}
+
+	// Check if sync is needed
+	if _, err := CheckAndPromptSync(ctx, cfgMgr, downloader); err != nil {
+		return err
 	}
 
 	// Resolve keyword

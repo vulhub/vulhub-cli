@@ -9,6 +9,7 @@ import (
 	"github.com/vulhub/vulhub-cli/internal/cli/ui"
 	"github.com/vulhub/vulhub-cli/internal/config"
 	"github.com/vulhub/vulhub-cli/internal/environment"
+	"github.com/vulhub/vulhub-cli/internal/github"
 	"github.com/vulhub/vulhub-cli/internal/resolver"
 	"github.com/vulhub/vulhub-cli/pkg/types"
 )
@@ -18,6 +19,7 @@ func CleanCommand(
 	cfgMgr config.Manager,
 	envMgr environment.Manager,
 	res resolver.Resolver,
+	downloader *github.Downloader,
 ) *cli.Command {
 	return &cli.Command{
 		Name:      "clean",
@@ -53,7 +55,7 @@ func CleanCommand(
 			}
 
 			all := cmd.Bool("all")
-			return runClean(ctx, cfgMgr, envMgr, res, keyword, cleanOptions{
+			return runClean(ctx, cfgMgr, envMgr, res, downloader, keyword, cleanOptions{
 				yes:     cmd.Bool("yes"),
 				volumes: cmd.Bool("volumes") || all,
 				images:  cmd.Bool("images") || all,
@@ -75,15 +77,25 @@ func runClean(
 	cfgMgr config.Manager,
 	envMgr environment.Manager,
 	res resolver.Resolver,
+	downloader *github.Downloader,
 	keyword string,
 	opts cleanOptions,
 ) error {
 	table := ui.NewTable()
 	selector := ui.NewSelector()
 
-	// Check if initialized
-	if !cfgMgr.IsInitialized() {
-		return fmt.Errorf("vulhub-cli is not initialized, please run 'vulhub init' first")
+	// Check if initialized, prompt to initialize if not
+	initialized, err := EnsureInitialized(ctx, cfgMgr, downloader)
+	if err != nil {
+		return err
+	}
+	if !initialized {
+		return nil
+	}
+
+	// Check if sync is needed
+	if _, err := CheckAndPromptSync(ctx, cfgMgr, downloader); err != nil {
+		return err
 	}
 
 	// Resolve keyword
