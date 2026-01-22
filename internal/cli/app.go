@@ -22,16 +22,16 @@ var (
 	BuildTime = "unknown"
 )
 
-// AppParams contains the dependencies for the CLI application
-type AppParams struct {
-	ConfigManager      config.Manager
-	EnvironmentManager environment.Manager
-	Resolver           resolver.Resolver
-	Downloader         *github.Downloader
-}
+// NewApp creates a new CLI application with all dependencies injected via fx
+func NewApp(
+	cfgMgr config.Manager,
+	envMgr environment.Manager,
+	res resolver.Resolver,
+	downloader *github.Downloader,
+) *cli.Command {
+	// Create commands instance with all dependencies
+	cmds := commands.New(cfgMgr, envMgr, res, downloader)
 
-// NewApp creates a new CLI application
-func NewApp(params AppParams) *cli.Command {
 	return &cli.Command{
 		Name:    "vulhub",
 		Usage:   "A CLI tool for managing Vulhub vulnerability environments",
@@ -46,20 +46,7 @@ func NewApp(params AppParams) *cli.Command {
 				Usage: "Path to configuration file",
 			},
 		},
-		Commands: []*cli.Command{
-			commands.InitCommand(params.ConfigManager, params.Downloader),
-			commands.SyncupCommand(params.ConfigManager, params.Downloader),
-			commands.StartCommand(params.ConfigManager, params.EnvironmentManager, params.Resolver, params.Downloader),
-			commands.StopCommand(params.ConfigManager, params.EnvironmentManager, params.Resolver, params.Downloader),
-			commands.DownCommand(params.ConfigManager, params.EnvironmentManager, params.Resolver, params.Downloader),
-			commands.RestartCommand(params.ConfigManager, params.EnvironmentManager, params.Resolver, params.Downloader),
-			commands.ListCommand(params.ConfigManager, params.EnvironmentManager, params.Downloader),
-			commands.ListAvailableCommand(params.ConfigManager, params.EnvironmentManager, params.Downloader),
-			commands.StatusCommand(params.ConfigManager, params.EnvironmentManager, params.Resolver, params.Downloader),
-			commands.SearchCommand(params.ConfigManager, params.EnvironmentManager, params.Downloader),
-			commands.InfoCommand(params.ConfigManager, params.EnvironmentManager, params.Resolver, params.Downloader),
-			commands.CleanCommand(params.ConfigManager, params.EnvironmentManager, params.Resolver, params.Downloader),
-		},
+		Commands: cmds.All(),
 	}
 }
 

@@ -7,20 +7,11 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/vulhub/vulhub-cli/internal/cli/ui"
-	"github.com/vulhub/vulhub-cli/internal/config"
-	"github.com/vulhub/vulhub-cli/internal/environment"
-	"github.com/vulhub/vulhub-cli/internal/github"
-	"github.com/vulhub/vulhub-cli/internal/resolver"
 	"github.com/vulhub/vulhub-cli/pkg/types"
 )
 
-// RestartCommand creates the restart command
-func RestartCommand(
-	cfgMgr config.Manager,
-	envMgr environment.Manager,
-	res resolver.Resolver,
-	downloader *github.Downloader,
-) *cli.Command {
+// Restart creates the restart command
+func (c *Commands) Restart() *cli.Command {
 	return &cli.Command{
 		Name:      "restart",
 		Usage:     "Restart a vulnerability environment",
@@ -38,25 +29,17 @@ func RestartCommand(
 				return fmt.Errorf("please provide a keyword (CVE number, path, or application name)")
 			}
 
-			return runRestart(ctx, cfgMgr, envMgr, res, downloader, keyword, cmd.Bool("yes"))
+			return c.runRestart(ctx, keyword, cmd.Bool("yes"))
 		},
 	}
 }
 
-func runRestart(
-	ctx context.Context,
-	cfgMgr config.Manager,
-	envMgr environment.Manager,
-	res resolver.Resolver,
-	downloader *github.Downloader,
-	keyword string,
-	skipConfirm bool,
-) error {
+func (c *Commands) runRestart(ctx context.Context, keyword string, skipConfirm bool) error {
 	table := ui.NewTable()
 	selector := ui.NewSelector()
 
 	// Check if initialized, prompt to initialize if not
-	initialized, err := EnsureInitialized(ctx, cfgMgr, downloader)
+	initialized, err := c.ensureInitialized(ctx)
 	if err != nil {
 		return err
 	}
@@ -65,12 +48,12 @@ func runRestart(
 	}
 
 	// Check if sync is needed
-	if _, err := CheckAndPromptSync(ctx, cfgMgr, downloader); err != nil {
+	if _, err := c.checkAndPromptSync(ctx); err != nil {
 		return err
 	}
 
 	// Resolve keyword
-	result, err := res.Resolve(ctx, keyword)
+	result, err := c.Resolver.Resolve(ctx, keyword)
 	if err != nil {
 		return err
 	}
@@ -98,12 +81,12 @@ func runRestart(
 	// Restart the environment
 	table.PrintInfo(fmt.Sprintf("Restarting environment: %s", env.Path))
 
-	if err := envMgr.Restart(ctx, *env); err != nil {
+	if err := c.Environment.Restart(ctx, *env); err != nil {
 		return err
 	}
 
 	// Get status to show ports
-	status, err := envMgr.Status(ctx, *env)
+	status, err := c.Environment.Status(ctx, *env)
 	if err != nil {
 		table.PrintWarning(fmt.Sprintf("Failed to get status: %v", err))
 	} else if len(status.Containers) > 0 {

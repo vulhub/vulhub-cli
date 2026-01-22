@@ -7,31 +7,29 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/vulhub/vulhub-cli/internal/cli/ui"
-	"github.com/vulhub/vulhub-cli/internal/config"
-	"github.com/vulhub/vulhub-cli/internal/github"
 )
 
-// SyncupCommand creates the syncup command
-func SyncupCommand(cfgMgr config.Manager, downloader *github.Downloader) *cli.Command {
+// Syncup creates the syncup command
+func (c *Commands) Syncup() *cli.Command {
 	return &cli.Command{
 		Name:  "syncup",
 		Usage: "Sync environment list from GitHub",
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			return runSyncup(ctx, cfgMgr, downloader)
+			return c.runSyncup(ctx)
 		},
 	}
 }
 
-func runSyncup(ctx context.Context, cfgMgr config.Manager, downloader *github.Downloader) error {
+func (c *Commands) runSyncup(ctx context.Context) error {
 	table := ui.NewTable()
 
 	// Check if initialized
-	if !cfgMgr.IsInitialized() {
+	if !c.Config.IsInitialized() {
 		return fmt.Errorf("vulhub-cli is not initialized, please run 'vulhub init' first")
 	}
 
 	// Use shared sync logic
-	result, err := PerformSync(ctx, cfgMgr, downloader, table)
+	result, err := c.performSync(ctx, table)
 	if err != nil {
 		return err
 	}

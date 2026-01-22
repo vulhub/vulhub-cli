@@ -11,14 +11,12 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/vulhub/vulhub-cli/internal/cli/ui"
-	"github.com/vulhub/vulhub-cli/internal/config"
-	"github.com/vulhub/vulhub-cli/internal/github"
 	"github.com/vulhub/vulhub-cli/pkg/types"
 )
 
-// CheckDockerEnvironment checks if Docker and Docker Compose are available
+// checkDockerEnvironment checks if Docker and Docker Compose are available
 // Returns nil if everything is ready, otherwise returns an error with installation instructions
-func CheckDockerEnvironment(ctx context.Context) error {
+func checkDockerEnvironment(ctx context.Context) error {
 	table := ui.NewTable()
 
 	// Check if docker command exists
@@ -115,15 +113,15 @@ func printDockerComposeInstallGuide() {
 	fmt.Println()
 }
 
-// EnsureInitialized checks if vulhub-cli is initialized, and prompts the user to initialize if not
+// ensureInitialized checks if vulhub-cli is initialized, and prompts the user to initialize if not
 // Returns true if initialized (or just initialized), false if user declined
-func EnsureInitialized(ctx context.Context, cfgMgr config.Manager, downloader *github.Downloader) (bool, error) {
+func (c *Commands) ensureInitialized(ctx context.Context) (bool, error) {
 	// First, check Docker environment
-	if err := CheckDockerEnvironment(ctx); err != nil {
+	if err := checkDockerEnvironment(ctx); err != nil {
 		return false, err
 	}
 
-	if cfgMgr.IsInitialized() {
+	if c.Config.IsInitialized() {
 		return true, nil
 	}
 
@@ -143,21 +141,21 @@ func EnsureInitialized(ctx context.Context, cfgMgr config.Manager, downloader *g
 	}
 
 	// Run initialization
-	if err := cfgMgr.Paths().EnsureConfigDir(); err != nil {
+	if err := c.Config.Paths().EnsureConfigDir(); err != nil {
 		return false, fmt.Errorf("failed to create config directory: %w", err)
 	}
 
 	// Create default configuration
 	table.PrintInfo("Creating default configuration...")
 	defaultCfg := types.DefaultConfig()
-	cfgMgr.Set(&defaultCfg)
-	if err := cfgMgr.Save(ctx); err != nil {
+	c.Config.Set(&defaultCfg)
+	if err := c.Config.Save(ctx); err != nil {
 		return false, fmt.Errorf("failed to save configuration: %w", err)
 	}
 
 	// Download environments.toml
 	table.PrintInfo("Downloading environment list from GitHub...")
-	envData, err := downloader.DownloadEnvironmentsList(ctx)
+	envData, err := c.Downloader.DownloadEnvironmentsList(ctx)
 	if err != nil {
 		return false, fmt.Errorf("failed to download environments list: %w", err)
 	}
@@ -168,17 +166,17 @@ func EnsureInitialized(ctx context.Context, cfgMgr config.Manager, downloader *g
 		return false, fmt.Errorf("failed to parse environments list: %w", err)
 	}
 
-	if err := cfgMgr.SaveEnvironments(ctx, &envList); err != nil {
+	if err := c.Config.SaveEnvironments(ctx, &envList); err != nil {
 		return false, fmt.Errorf("failed to save environments list: %w", err)
 	}
 
 	// Update last sync time
-	if err := cfgMgr.UpdateLastSyncTime(ctx); err != nil {
+	if err := c.Config.UpdateLastSyncTime(ctx); err != nil {
 		return false, fmt.Errorf("failed to update sync time: %w", err)
 	}
 
 	// Ensure environments directory exists
-	if err := cfgMgr.Paths().EnsureEnvironmentsDir(); err != nil {
+	if err := c.Config.Paths().EnsureEnvironmentsDir(); err != nil {
 		return false, fmt.Errorf("failed to create environments directory: %w", err)
 	}
 
@@ -188,17 +186,17 @@ func EnsureInitialized(ctx context.Context, cfgMgr config.Manager, downloader *g
 	return true, nil
 }
 
-// CheckAndPromptSync checks if environments need to be synced and prompts the user
+// checkAndPromptSync checks if environments need to be synced and prompts the user
 // Returns true if sync was performed or not needed, false if user declined
-func CheckAndPromptSync(ctx context.Context, cfgMgr config.Manager, downloader *github.Downloader) (bool, error) {
-	if !cfgMgr.NeedSync() {
+func (c *Commands) checkAndPromptSync(ctx context.Context) (bool, error) {
+	if !c.Config.NeedSync() {
 		return true, nil
 	}
 
 	selector := ui.NewSelector()
 	table := ui.NewTable()
 
-	lastSync := cfgMgr.GetLastSyncTime()
+	lastSync := c.Config.GetLastSyncTime()
 	var syncMsg string
 	if lastSync.IsZero() {
 		syncMsg = "Environment list has never been synced."
@@ -218,7 +216,7 @@ func CheckAndPromptSync(ctx context.Context, cfgMgr config.Manager, downloader *
 	}
 
 	// Run sync
-	result, err := PerformSync(ctx, cfgMgr, downloader, table)
+	result, err := c.performSync(ctx, table)
 	if err != nil {
 		return false, err
 	}
@@ -233,24 +231,24 @@ func CheckAndPromptSync(ctx context.Context, cfgMgr config.Manager, downloader *
 	return true, nil
 }
 
-// SyncResult holds the result of a sync operation
-type SyncResult struct {
+// syncResult holds the result of a sync operation
+type syncResult struct {
 	PreviousCount int
 	CurrentCount  int
 }
 
-// PerformSync performs the actual sync operation and returns the result
-// This is the core sync logic shared by both CheckAndPromptSync and SyncupCommand
-func PerformSync(ctx context.Context, cfgMgr config.Manager, downloader *github.Downloader, table *ui.Table) (*SyncResult, error) {
+// performSync performs the actual sync operation and returns the result
+// This is the core sync logic shared by both checkAndPromptSync and Syncup command
+func (c *Commands) performSync(ctx context.Context, table *ui.Table) (*syncResult, error) {
 	// Load current environments
-	currentEnvs, err := cfgMgr.LoadEnvironments(ctx)
+	currentEnvs, err := c.Config.LoadEnvironments(ctx)
 	if err != nil {
 		currentEnvs = &types.EnvironmentList{}
 	}
 
 	// Download latest environments.toml
 	table.PrintInfo("Downloading latest environment list from GitHub...")
-	envData, err := downloader.DownloadEnvironmentsList(ctx)
+	envData, err := c.Downloader.DownloadEnvironmentsList(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download environments list: %w", err)
 	}
@@ -262,16 +260,16 @@ func PerformSync(ctx context.Context, cfgMgr config.Manager, downloader *github.
 	}
 
 	// Save environments
-	if err := cfgMgr.SaveEnvironments(ctx, &newEnvs); err != nil {
+	if err := c.Config.SaveEnvironments(ctx, &newEnvs); err != nil {
 		return nil, fmt.Errorf("failed to save environments list: %w", err)
 	}
 
 	// Update last sync time
-	if err := cfgMgr.UpdateLastSyncTime(ctx); err != nil {
+	if err := c.Config.UpdateLastSyncTime(ctx); err != nil {
 		return nil, fmt.Errorf("failed to update sync time: %w", err)
 	}
 
-	return &SyncResult{
+	return &syncResult{
 		PreviousCount: len(currentEnvs.Environment),
 		CurrentCount:  len(newEnvs.Environment),
 	}, nil

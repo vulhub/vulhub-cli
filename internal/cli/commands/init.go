@@ -8,13 +8,11 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/vulhub/vulhub-cli/internal/cli/ui"
-	"github.com/vulhub/vulhub-cli/internal/config"
-	"github.com/vulhub/vulhub-cli/internal/github"
 	"github.com/vulhub/vulhub-cli/pkg/types"
 )
 
-// InitCommand creates the init command
-func InitCommand(cfgMgr config.Manager, downloader *github.Downloader) *cli.Command {
+// Init creates the init command
+func (c *Commands) Init() *cli.Command {
 	return &cli.Command{
 		Name:  "init",
 		Usage: "Initialize vulhub-cli configuration",
@@ -26,17 +24,17 @@ func InitCommand(cfgMgr config.Manager, downloader *github.Downloader) *cli.Comm
 			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			return runInit(ctx, cfgMgr, downloader, cmd.Bool("force"))
+			return c.runInit(ctx, cmd.Bool("force"))
 		},
 	}
 }
 
-func runInit(ctx context.Context, cfgMgr config.Manager, downloader *github.Downloader, force bool) error {
+func (c *Commands) runInit(ctx context.Context, force bool) error {
 	table := ui.NewTable()
 	selector := ui.NewSelector()
 
 	// Check if already initialized
-	if cfgMgr.IsInitialized() && !force {
+	if c.Config.IsInitialized() && !force {
 		confirmed, err := selector.Confirm("Configuration already exists. Overwrite?", false)
 		if err != nil {
 			return err
@@ -48,21 +46,21 @@ func runInit(ctx context.Context, cfgMgr config.Manager, downloader *github.Down
 	}
 
 	// Ensure config directory exists
-	if err := cfgMgr.Paths().EnsureConfigDir(); err != nil {
+	if err := c.Config.Paths().EnsureConfigDir(); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
 	// Create default configuration
 	table.PrintInfo("Creating default configuration...")
 	defaultCfg := types.DefaultConfig()
-	cfgMgr.Set(&defaultCfg)
-	if err := cfgMgr.Save(ctx); err != nil {
+	c.Config.Set(&defaultCfg)
+	if err := c.Config.Save(ctx); err != nil {
 		return fmt.Errorf("failed to save configuration: %w", err)
 	}
 
 	// Download environments.toml
 	table.PrintInfo("Downloading environment list from GitHub...")
-	envData, err := downloader.DownloadEnvironmentsList(ctx)
+	envData, err := c.Downloader.DownloadEnvironmentsList(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to download environments list: %w", err)
 	}
@@ -73,23 +71,23 @@ func runInit(ctx context.Context, cfgMgr config.Manager, downloader *github.Down
 		return fmt.Errorf("failed to parse environments list: %w", err)
 	}
 
-	if err := cfgMgr.SaveEnvironments(ctx, &envList); err != nil {
+	if err := c.Config.SaveEnvironments(ctx, &envList); err != nil {
 		return fmt.Errorf("failed to save environments list: %w", err)
 	}
 
 	// Update last sync time
-	if err := cfgMgr.UpdateLastSyncTime(ctx); err != nil {
+	if err := c.Config.UpdateLastSyncTime(ctx); err != nil {
 		return fmt.Errorf("failed to update sync time: %w", err)
 	}
 
 	// Ensure environments directory exists
-	if err := cfgMgr.Paths().EnsureEnvironmentsDir(); err != nil {
+	if err := c.Config.Paths().EnsureEnvironmentsDir(); err != nil {
 		return fmt.Errorf("failed to create environments directory: %w", err)
 	}
 
 	table.PrintSuccess(fmt.Sprintf("Initialization complete! Found %d environments.", len(envList.Environment)))
 	fmt.Println()
-	fmt.Println("Configuration directory:", cfgMgr.Paths().ConfigDir())
+	fmt.Println("Configuration directory:", c.Config.Paths().ConfigDir())
 	fmt.Println()
 	fmt.Println("Quick start:")
 	fmt.Println("  vulhub search log4j         # Search for environments")

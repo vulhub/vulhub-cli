@@ -7,20 +7,12 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/vulhub/vulhub-cli/internal/cli/ui"
-	"github.com/vulhub/vulhub-cli/internal/config"
 	"github.com/vulhub/vulhub-cli/internal/environment"
-	"github.com/vulhub/vulhub-cli/internal/github"
-	"github.com/vulhub/vulhub-cli/internal/resolver"
 	"github.com/vulhub/vulhub-cli/pkg/types"
 )
 
-// StartCommand creates the start command
-func StartCommand(
-	cfgMgr config.Manager,
-	envMgr environment.Manager,
-	res resolver.Resolver,
-	downloader *github.Downloader,
-) *cli.Command {
+// Start creates the start command
+func (c *Commands) Start() *cli.Command {
 	return &cli.Command{
 		Name:      "start",
 		Usage:     "Start a vulnerability environment",
@@ -50,7 +42,7 @@ func StartCommand(
 				return fmt.Errorf("please provide a keyword (CVE number, path, or application name)")
 			}
 
-			return runStart(ctx, cfgMgr, envMgr, res, downloader, keyword, startOptions{
+			return c.runStart(ctx, keyword, startOptions{
 				yes:           cmd.Bool("yes"),
 				pull:          cmd.Bool("pull"),
 				build:         cmd.Bool("build"),
@@ -67,20 +59,12 @@ type startOptions struct {
 	forceRecreate bool
 }
 
-func runStart(
-	ctx context.Context,
-	cfgMgr config.Manager,
-	envMgr environment.Manager,
-	res resolver.Resolver,
-	downloader *github.Downloader,
-	keyword string,
-	opts startOptions,
-) error {
+func (c *Commands) runStart(ctx context.Context, keyword string, opts startOptions) error {
 	table := ui.NewTable()
 	selector := ui.NewSelector()
 
 	// Check if initialized, prompt to initialize if not
-	initialized, err := EnsureInitialized(ctx, cfgMgr, downloader)
+	initialized, err := c.ensureInitialized(ctx)
 	if err != nil {
 		return err
 	}
@@ -89,12 +73,12 @@ func runStart(
 	}
 
 	// Check if sync is needed
-	if _, err := CheckAndPromptSync(ctx, cfgMgr, downloader); err != nil {
+	if _, err := c.checkAndPromptSync(ctx); err != nil {
 		return err
 	}
 
 	// Resolve keyword
-	result, err := res.Resolve(ctx, keyword)
+	result, err := c.Resolver.Resolve(ctx, keyword)
 	if err != nil {
 		return err
 	}
@@ -128,12 +112,12 @@ func runStart(
 		ForceRecreate: opts.forceRecreate,
 	}
 
-	if err := envMgr.Start(ctx, *env, startOpts); err != nil {
+	if err := c.Environment.Start(ctx, *env, startOpts); err != nil {
 		return err
 	}
 
 	// Get status to show ports
-	status, err := envMgr.Status(ctx, *env)
+	status, err := c.Environment.Status(ctx, *env)
 	if err != nil {
 		table.PrintWarning(fmt.Sprintf("Failed to get status: %v", err))
 	} else if len(status.Containers) > 0 {

@@ -7,37 +7,24 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/vulhub/vulhub-cli/internal/cli/ui"
-	"github.com/vulhub/vulhub-cli/internal/config"
-	"github.com/vulhub/vulhub-cli/internal/environment"
-	"github.com/vulhub/vulhub-cli/internal/github"
 )
 
-// SearchCommand creates the search command
-func SearchCommand(cfgMgr config.Manager, envMgr environment.Manager, downloader *github.Downloader) *cli.Command {
+// Search creates the search command
+func (c *Commands) Search() *cli.Command {
 	return &cli.Command{
 		Name:      "search",
 		Usage:     "Search for vulnerability environments",
 		ArgsUsage: "[keyword]",
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			keyword := cmd.Args().First()
-			if keyword == "" {
-				keyword = ""
-			}
-
-			return runSearch(ctx, cfgMgr, envMgr, downloader, keyword)
+			return c.runSearch(ctx, keyword)
 		},
 	}
 }
 
-func runSearch(
-	ctx context.Context,
-	cfgMgr config.Manager,
-	envMgr environment.Manager,
-	downloader *github.Downloader,
-	keyword string,
-) error {
+func (c *Commands) runSearch(ctx context.Context, keyword string) error {
 	// Check if initialized, prompt to initialize if not
-	initialized, err := EnsureInitialized(ctx, cfgMgr, downloader)
+	initialized, err := c.ensureInitialized(ctx)
 	if err != nil {
 		return err
 	}
@@ -46,12 +33,12 @@ func runSearch(
 	}
 
 	// Check if sync is needed
-	if _, err := CheckAndPromptSync(ctx, cfgMgr, downloader); err != nil {
+	if _, err := c.checkAndPromptSync(ctx); err != nil {
 		return err
 	}
 
 	// Load all environments
-	envList, err := cfgMgr.LoadEnvironments(ctx)
+	envList, err := c.Config.LoadEnvironments(ctx)
 	if err != nil {
 		return err
 	}
@@ -78,7 +65,7 @@ func runSearch(
 		}
 
 		// User selected an environment, show its info
-		info, err := envMgr.GetInfo(ctx, *result.Selected)
+		info, err := c.Environment.GetInfo(ctx, *result.Selected)
 		if err != nil {
 			return err
 		}

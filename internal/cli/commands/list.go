@@ -7,28 +7,25 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/vulhub/vulhub-cli/internal/cli/ui"
-	"github.com/vulhub/vulhub-cli/internal/config"
-	"github.com/vulhub/vulhub-cli/internal/environment"
-	"github.com/vulhub/vulhub-cli/internal/github"
 )
 
-// ListCommand creates the list command
-func ListCommand(cfgMgr config.Manager, envMgr environment.Manager, downloader *github.Downloader) *cli.Command {
+// List creates the list command
+func (c *Commands) List() *cli.Command {
 	return &cli.Command{
 		Name:    "list",
 		Usage:   "List all downloaded vulnerability environments",
 		Aliases: []string{"ls"},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			return runList(ctx, cfgMgr, envMgr, downloader)
+			return c.runList(ctx)
 		},
 	}
 }
 
-func runList(ctx context.Context, cfgMgr config.Manager, envMgr environment.Manager, downloader *github.Downloader) error {
+func (c *Commands) runList(ctx context.Context) error {
 	table := ui.NewTable()
 
 	// Check if initialized, prompt to initialize if not
-	initialized, err := EnsureInitialized(ctx, cfgMgr, downloader)
+	initialized, err := c.ensureInitialized(ctx)
 	if err != nil {
 		return err
 	}
@@ -37,12 +34,12 @@ func runList(ctx context.Context, cfgMgr config.Manager, envMgr environment.Mana
 	}
 
 	// Check if sync is needed
-	if _, err := CheckAndPromptSync(ctx, cfgMgr, downloader); err != nil {
+	if _, err := c.checkAndPromptSync(ctx); err != nil {
 		return err
 	}
 
 	// Get all downloaded environments
-	statuses, err := envMgr.ListDownloaded(ctx)
+	statuses, err := c.Environment.ListDownloaded(ctx)
 	if err != nil {
 		return err
 	}
@@ -52,8 +49,8 @@ func runList(ctx context.Context, cfgMgr config.Manager, envMgr environment.Mana
 	return nil
 }
 
-// ListAvailableCommand creates the list-available command
-func ListAvailableCommand(cfgMgr config.Manager, envMgr environment.Manager, downloader *github.Downloader) *cli.Command {
+// ListAvailable creates the list-available command
+func (c *Commands) ListAvailable() *cli.Command {
 	return &cli.Command{
 		Name:    "list-available",
 		Usage:   "List all available vulnerability environments",
@@ -67,14 +64,14 @@ func ListAvailableCommand(cfgMgr config.Manager, envMgr environment.Manager, dow
 			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			return runListAvailable(ctx, cfgMgr, envMgr, downloader, int(cmd.Int("limit")))
+			return c.runListAvailable(ctx, int(cmd.Int("limit")))
 		},
 	}
 }
 
-func runListAvailable(ctx context.Context, cfgMgr config.Manager, envMgr environment.Manager, downloader *github.Downloader, limit int) error {
+func (c *Commands) runListAvailable(ctx context.Context, limit int) error {
 	// Check if initialized, prompt to initialize if not
-	initialized, err := EnsureInitialized(ctx, cfgMgr, downloader)
+	initialized, err := c.ensureInitialized(ctx)
 	if err != nil {
 		return err
 	}
@@ -83,12 +80,12 @@ func runListAvailable(ctx context.Context, cfgMgr config.Manager, envMgr environ
 	}
 
 	// Check if sync is needed
-	if _, err := CheckAndPromptSync(ctx, cfgMgr, downloader); err != nil {
+	if _, err := c.checkAndPromptSync(ctx); err != nil {
 		return err
 	}
 
 	// Load environments
-	envList, err := cfgMgr.LoadEnvironments(ctx)
+	envList, err := c.Config.LoadEnvironments(ctx)
 	if err != nil {
 		return err
 	}
@@ -115,7 +112,7 @@ func runListAvailable(ctx context.Context, cfgMgr config.Manager, envMgr environ
 		}
 
 		// User selected an environment, show its info
-		info, err := envMgr.GetInfo(ctx, *result.Selected)
+		info, err := c.Environment.GetInfo(ctx, *result.Selected)
 		if err != nil {
 			return err
 		}

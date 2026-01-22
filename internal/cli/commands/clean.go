@@ -7,20 +7,12 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/vulhub/vulhub-cli/internal/cli/ui"
-	"github.com/vulhub/vulhub-cli/internal/config"
 	"github.com/vulhub/vulhub-cli/internal/environment"
-	"github.com/vulhub/vulhub-cli/internal/github"
-	"github.com/vulhub/vulhub-cli/internal/resolver"
 	"github.com/vulhub/vulhub-cli/pkg/types"
 )
 
-// CleanCommand creates the clean command
-func CleanCommand(
-	cfgMgr config.Manager,
-	envMgr environment.Manager,
-	res resolver.Resolver,
-	downloader *github.Downloader,
-) *cli.Command {
+// Clean creates the clean command
+func (c *Commands) Clean() *cli.Command {
 	return &cli.Command{
 		Name:      "clean",
 		Usage:     "Clean up a vulnerability environment",
@@ -55,7 +47,7 @@ func CleanCommand(
 			}
 
 			all := cmd.Bool("all")
-			return runClean(ctx, cfgMgr, envMgr, res, downloader, keyword, cleanOptions{
+			return c.runClean(ctx, keyword, cleanOptions{
 				yes:     cmd.Bool("yes"),
 				volumes: cmd.Bool("volumes") || all,
 				images:  cmd.Bool("images") || all,
@@ -72,20 +64,12 @@ type cleanOptions struct {
 	files   bool
 }
 
-func runClean(
-	ctx context.Context,
-	cfgMgr config.Manager,
-	envMgr environment.Manager,
-	res resolver.Resolver,
-	downloader *github.Downloader,
-	keyword string,
-	opts cleanOptions,
-) error {
+func (c *Commands) runClean(ctx context.Context, keyword string, opts cleanOptions) error {
 	table := ui.NewTable()
 	selector := ui.NewSelector()
 
 	// Check if initialized, prompt to initialize if not
-	initialized, err := EnsureInitialized(ctx, cfgMgr, downloader)
+	initialized, err := c.ensureInitialized(ctx)
 	if err != nil {
 		return err
 	}
@@ -94,12 +78,12 @@ func runClean(
 	}
 
 	// Check if sync is needed
-	if _, err := CheckAndPromptSync(ctx, cfgMgr, downloader); err != nil {
+	if _, err := c.checkAndPromptSync(ctx); err != nil {
 		return err
 	}
 
 	// Resolve keyword
-	result, err := res.Resolve(ctx, keyword)
+	result, err := c.Resolver.Resolve(ctx, keyword)
 	if err != nil {
 		return err
 	}
@@ -157,7 +141,7 @@ func runClean(
 		RemoveFiles:   opts.files,
 	}
 
-	if err := envMgr.Clean(ctx, *env, cleanOpts); err != nil {
+	if err := c.Environment.Clean(ctx, *env, cleanOpts); err != nil {
 		return err
 	}
 

@@ -7,44 +7,28 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/vulhub/vulhub-cli/internal/cli/ui"
-	"github.com/vulhub/vulhub-cli/internal/config"
-	"github.com/vulhub/vulhub-cli/internal/environment"
-	"github.com/vulhub/vulhub-cli/internal/github"
-	"github.com/vulhub/vulhub-cli/internal/resolver"
 	"github.com/vulhub/vulhub-cli/pkg/types"
 )
 
-// StatusCommand creates the status command
-func StatusCommand(
-	cfgMgr config.Manager,
-	envMgr environment.Manager,
-	res resolver.Resolver,
-	downloader *github.Downloader,
-) *cli.Command {
+// Status creates the status command
+func (c *Commands) Status() *cli.Command {
 	return &cli.Command{
 		Name:      "status",
 		Usage:     "Show status of vulnerability environments",
 		ArgsUsage: "[keyword]",
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			keyword := cmd.Args().First()
-			return runStatus(ctx, cfgMgr, envMgr, res, downloader, keyword)
+			return c.runStatus(ctx, keyword)
 		},
 	}
 }
 
-func runStatus(
-	ctx context.Context,
-	cfgMgr config.Manager,
-	envMgr environment.Manager,
-	res resolver.Resolver,
-	downloader *github.Downloader,
-	keyword string,
-) error {
+func (c *Commands) runStatus(ctx context.Context, keyword string) error {
 	table := ui.NewTable()
 	selector := ui.NewSelector()
 
 	// Check if initialized, prompt to initialize if not
-	initialized, err := EnsureInitialized(ctx, cfgMgr, downloader)
+	initialized, err := c.ensureInitialized(ctx)
 	if err != nil {
 		return err
 	}
@@ -53,13 +37,13 @@ func runStatus(
 	}
 
 	// Check if sync is needed
-	if _, err := CheckAndPromptSync(ctx, cfgMgr, downloader); err != nil {
+	if _, err := c.checkAndPromptSync(ctx); err != nil {
 		return err
 	}
 
 	// If no keyword, show all running environments
 	if keyword == "" {
-		statuses, err := envMgr.ListRunning(ctx)
+		statuses, err := c.Environment.ListRunning(ctx)
 		if err != nil {
 			return err
 		}
@@ -70,7 +54,7 @@ func runStatus(
 		}
 
 		for _, status := range statuses {
-			printEnvironmentStatus(table, &status)
+			c.printEnvironmentStatus(table, &status)
 			fmt.Println()
 		}
 
@@ -78,7 +62,7 @@ func runStatus(
 	}
 
 	// Resolve keyword
-	result, err := res.Resolve(ctx, keyword)
+	result, err := c.Resolver.Resolve(ctx, keyword)
 	if err != nil {
 		return err
 	}
@@ -100,17 +84,17 @@ func runStatus(
 	}
 
 	// Get status
-	status, err := envMgr.Status(ctx, *env)
+	status, err := c.Environment.Status(ctx, *env)
 	if err != nil {
 		return err
 	}
 
-	printEnvironmentStatus(table, status)
+	c.printEnvironmentStatus(table, status)
 
 	return nil
 }
 
-func printEnvironmentStatus(table *ui.Table, status *types.EnvironmentStatus) {
+func (c *Commands) printEnvironmentStatus(table *ui.Table, status *types.EnvironmentStatus) {
 	env := status.Environment
 
 	fmt.Printf("Environment: %s\n", env.Path)

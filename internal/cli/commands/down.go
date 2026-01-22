@@ -7,20 +7,11 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/vulhub/vulhub-cli/internal/cli/ui"
-	"github.com/vulhub/vulhub-cli/internal/config"
-	"github.com/vulhub/vulhub-cli/internal/environment"
-	"github.com/vulhub/vulhub-cli/internal/github"
-	"github.com/vulhub/vulhub-cli/internal/resolver"
 	"github.com/vulhub/vulhub-cli/pkg/types"
 )
 
-// DownCommand creates the down command
-func DownCommand(
-	cfgMgr config.Manager,
-	envMgr environment.Manager,
-	res resolver.Resolver,
-	downloader *github.Downloader,
-) *cli.Command {
+// Down creates the down command
+func (c *Commands) Down() *cli.Command {
 	return &cli.Command{
 		Name:      "down",
 		Usage:     "Completely remove an environment (containers, volumes, and local files)",
@@ -38,25 +29,17 @@ func DownCommand(
 				return fmt.Errorf("please provide a keyword (CVE number, path, or application name)")
 			}
 
-			return runDown(ctx, cfgMgr, envMgr, res, downloader, keyword, cmd.Bool("yes"))
+			return c.runDown(ctx, keyword, cmd.Bool("yes"))
 		},
 	}
 }
 
-func runDown(
-	ctx context.Context,
-	cfgMgr config.Manager,
-	envMgr environment.Manager,
-	res resolver.Resolver,
-	downloader *github.Downloader,
-	keyword string,
-	skipConfirm bool,
-) error {
+func (c *Commands) runDown(ctx context.Context, keyword string, skipConfirm bool) error {
 	table := ui.NewTable()
 	selector := ui.NewSelector()
 
 	// Check if initialized, prompt to initialize if not
-	initialized, err := EnsureInitialized(ctx, cfgMgr, downloader)
+	initialized, err := c.ensureInitialized(ctx)
 	if err != nil {
 		return err
 	}
@@ -65,12 +48,12 @@ func runDown(
 	}
 
 	// Check if sync is needed
-	if _, err := CheckAndPromptSync(ctx, cfgMgr, downloader); err != nil {
+	if _, err := c.checkAndPromptSync(ctx); err != nil {
 		return err
 	}
 
 	// Resolve keyword
-	result, err := res.Resolve(ctx, keyword)
+	result, err := c.Resolver.Resolve(ctx, keyword)
 	if err != nil {
 		return err
 	}
@@ -98,7 +81,7 @@ func runDown(
 	// Down the environment
 	table.PrintInfo(fmt.Sprintf("Stopping and removing environment: %s", env.Path))
 
-	if err := envMgr.Down(ctx, *env); err != nil {
+	if err := c.Environment.Down(ctx, *env); err != nil {
 		return err
 	}
 

@@ -7,20 +7,11 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/vulhub/vulhub-cli/internal/cli/ui"
-	"github.com/vulhub/vulhub-cli/internal/config"
-	"github.com/vulhub/vulhub-cli/internal/environment"
-	"github.com/vulhub/vulhub-cli/internal/github"
-	"github.com/vulhub/vulhub-cli/internal/resolver"
 	"github.com/vulhub/vulhub-cli/pkg/types"
 )
 
-// StopCommand creates the stop command
-func StopCommand(
-	cfgMgr config.Manager,
-	envMgr environment.Manager,
-	res resolver.Resolver,
-	downloader *github.Downloader,
-) *cli.Command {
+// Stop creates the stop command
+func (c *Commands) Stop() *cli.Command {
 	return &cli.Command{
 		Name:      "stop",
 		Usage:     "Stop a running vulnerability environment",
@@ -38,25 +29,17 @@ func StopCommand(
 				return fmt.Errorf("please provide a keyword (CVE number, path, or application name)")
 			}
 
-			return runStop(ctx, cfgMgr, envMgr, res, downloader, keyword, cmd.Bool("yes"))
+			return c.runStop(ctx, keyword, cmd.Bool("yes"))
 		},
 	}
 }
 
-func runStop(
-	ctx context.Context,
-	cfgMgr config.Manager,
-	envMgr environment.Manager,
-	res resolver.Resolver,
-	downloader *github.Downloader,
-	keyword string,
-	skipConfirm bool,
-) error {
+func (c *Commands) runStop(ctx context.Context, keyword string, skipConfirm bool) error {
 	table := ui.NewTable()
 	selector := ui.NewSelector()
 
 	// Check if initialized, prompt to initialize if not
-	initialized, err := EnsureInitialized(ctx, cfgMgr, downloader)
+	initialized, err := c.ensureInitialized(ctx)
 	if err != nil {
 		return err
 	}
@@ -65,12 +48,12 @@ func runStop(
 	}
 
 	// Check if sync is needed
-	if _, err := CheckAndPromptSync(ctx, cfgMgr, downloader); err != nil {
+	if _, err := c.checkAndPromptSync(ctx); err != nil {
 		return err
 	}
 
 	// Resolve keyword
-	result, err := res.Resolve(ctx, keyword)
+	result, err := c.Resolver.Resolve(ctx, keyword)
 	if err != nil {
 		return err
 	}
@@ -98,7 +81,7 @@ func runStop(
 	// Stop the environment
 	table.PrintInfo(fmt.Sprintf("Stopping environment: %s", env.Path))
 
-	if err := envMgr.Stop(ctx, *env); err != nil {
+	if err := c.Environment.Stop(ctx, *env); err != nil {
 		return err
 	}
 

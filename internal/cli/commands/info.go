@@ -7,20 +7,11 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/vulhub/vulhub-cli/internal/cli/ui"
-	"github.com/vulhub/vulhub-cli/internal/config"
-	"github.com/vulhub/vulhub-cli/internal/environment"
-	"github.com/vulhub/vulhub-cli/internal/github"
-	"github.com/vulhub/vulhub-cli/internal/resolver"
 	"github.com/vulhub/vulhub-cli/pkg/types"
 )
 
-// InfoCommand creates the info command
-func InfoCommand(
-	cfgMgr config.Manager,
-	envMgr environment.Manager,
-	res resolver.Resolver,
-	downloader *github.Downloader,
-) *cli.Command {
+// Info creates the info command
+func (c *Commands) Info() *cli.Command {
 	return &cli.Command{
 		Name:      "info",
 		Usage:     "Show detailed information about a vulnerability environment",
@@ -42,7 +33,7 @@ func InfoCommand(
 				return fmt.Errorf("please provide a keyword (CVE number, path, or application name)")
 			}
 
-			return runInfo(ctx, cfgMgr, envMgr, res, downloader, keyword, infoOptions{
+			return c.runInfo(ctx, keyword, infoOptions{
 				yes:      cmd.Bool("yes"),
 				noReadme: cmd.Bool("no-readme"),
 			})
@@ -55,20 +46,12 @@ type infoOptions struct {
 	noReadme bool
 }
 
-func runInfo(
-	ctx context.Context,
-	cfgMgr config.Manager,
-	envMgr environment.Manager,
-	res resolver.Resolver,
-	downloader *github.Downloader,
-	keyword string,
-	opts infoOptions,
-) error {
+func (c *Commands) runInfo(ctx context.Context, keyword string, opts infoOptions) error {
 	table := ui.NewTable()
 	selector := ui.NewSelector()
 
 	// Check if initialized, prompt to initialize if not
-	initialized, err := EnsureInitialized(ctx, cfgMgr, downloader)
+	initialized, err := c.ensureInitialized(ctx)
 	if err != nil {
 		return err
 	}
@@ -77,12 +60,12 @@ func runInfo(
 	}
 
 	// Check if sync is needed
-	if _, err := CheckAndPromptSync(ctx, cfgMgr, downloader); err != nil {
+	if _, err := c.checkAndPromptSync(ctx); err != nil {
 		return err
 	}
 
 	// Resolve keyword
-	result, err := res.Resolve(ctx, keyword)
+	result, err := c.Resolver.Resolve(ctx, keyword)
 	if err != nil {
 		return err
 	}
@@ -108,7 +91,7 @@ func runInfo(
 	}
 
 	// Get environment info
-	info, err := envMgr.GetInfo(ctx, *env)
+	info, err := c.Environment.GetInfo(ctx, *env)
 	if err != nil {
 		return err
 	}

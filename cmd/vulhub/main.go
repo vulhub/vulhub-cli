@@ -66,20 +66,8 @@ func run(ctx context.Context) error {
 		resolver.Module,
 		environment.Module,
 
-		// Provide CLI app
-		fx.Provide(func(
-			cfgMgr config.Manager,
-			envMgr environment.Manager,
-			res resolver.Resolver,
-			downloader *github.Downloader,
-		) *cli.Command {
-			return cli.NewApp(cli.AppParams{
-				ConfigManager:      cfgMgr,
-				EnvironmentManager: envMgr,
-				Resolver:           res,
-				Downloader:         downloader,
-			})
-		}),
+		// Provide CLI app (fx automatically injects all dependencies)
+		fx.Provide(cli.NewApp),
 
 		// Populate CLI app
 		fx.Populate(&cliApp),
