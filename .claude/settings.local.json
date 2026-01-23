@@ -16,7 +16,9 @@
       "Bash(tree:*)",
       "Bash(go run:*)",
       "Bash(docker info:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(./vulhub.exe:*)",
+      "Bash(ls:*)"
     ]
   }
 }
