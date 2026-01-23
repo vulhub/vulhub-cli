@@ -49,5 +49,6 @@ func (c *Commands) All() []*cli.Command {
 		c.Search(),
 		c.Info(),
 		c.Clean(),
+		c.GitHubAuth(),
 	}
 }

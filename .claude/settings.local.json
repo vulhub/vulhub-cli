@@ -12,7 +12,9 @@
       "Bash(go build:*)",
       "Bash(./bin/vulhub.exe:*)",
       "Bash(go get:*)",
-      "Bash(go test:*)"
+      "Bash(go test:*)",
+      "Bash(tree:*)",
+      "Bash(go run:*)"
     ]
   }
 }

@@ -89,6 +89,7 @@ The following files SHALL be created in `~/.vulhub/` directory:
 | `vulhub search [keyword]` | Search for vulnerability environments |
 | `vulhub info [keyword]` | Display detailed information about a vulnerability environment |
 | `vulhub clean [keyword]` | Clean up environment files and Docker resources |
+| `vulhub github-auth` | Authenticate with GitHub using OAuth Device Flow |
 
 #### Acceptance Criteria
 
@@ -318,6 +319,18 @@ type GitHubClient interface {
 4. If no keyword, prompt user to clean all or select specific environments
 5. Display cleanup summary (freed disk space)
 
+#### Subcommand: `github-auth`
+
+1. If `--status` flag is provided, display current authentication status
+2. If `--remove` flag is provided, prompt for confirmation and remove saved token
+3. Otherwise, initiate OAuth Device Flow authentication:
+   a. Request device code from GitHub OAuth endpoint
+   b. Display user code and verification URL
+   c. Automatically open browser to verification URL
+   d. Poll for access token while user completes authorization
+   e. Save access token to configuration file
+4. Display success message with rate limit information
+
 #### Acceptance Criteria
 
 1. All subcommands SHALL use the Docker Compose package (Requirement 4) for Docker operations
@@ -327,3 +340,69 @@ type GitHubClient interface {
 5. All subcommands SHALL support `--help` flag for command-specific help
 6. Long-running operations SHALL display progress indicators
 7. Interactive selections SHALL be skippable with `--yes` or `-y` flag for automation
+
+---
+
+### Requirement 7: GitHub OAuth Device Flow Authentication
+
+**User Story:** As a user, I want to authenticate with GitHub easily without manually creating tokens, so that I can avoid API rate limits with minimal effort.
+
+#### OAuth App Configuration
+
+- **OAuth App Name**: Vulhub CLI
+- **Client ID**: `Ov23liDeiHCLOTtZxFY4`
+- **Authorization Flow**: Device Flow (RFC 8628)
+- **Required Scope**: `public_repo`
+
+#### Command
+
+- `vulhub github-auth` - Authenticate with GitHub using OAuth Device Flow
+
+#### Command Flags
+
+| Flag | Description |
+|------|-------------|
+| `--status` | Display current authentication status |
+| `--remove` | Remove saved GitHub authentication |
+
+#### Acceptance Criteria
+
+1. WHEN user executes `vulhub github-auth` THEN system SHALL initiate OAuth Device Flow
+2. WHEN device code is received THEN system SHALL display user code and verification URL
+3. WHEN verification URL is displayed THEN system SHALL attempt to open default browser automatically
+4. WHEN waiting for authorization THEN system SHALL poll GitHub at the specified interval
+5. WHEN user completes authorization THEN system SHALL save the access token to config file
+6. WHEN user denies authorization THEN system SHALL display appropriate message
+7. WHEN device code expires THEN system SHALL inform user and suggest retrying
+8. WHEN user executes `vulhub github-auth --status` THEN system SHALL display authentication status with masked token
+9. WHEN user executes `vulhub github-auth --remove` THEN system SHALL prompt for confirmation before removing token
+10. WHEN any command encounters GitHub API rate limit AND user is not authenticated THEN system SHALL prompt to start OAuth flow
+
+#### OAuth Device Flow Sequence
+
+1. **Request Device Code**
+   - POST to `https://github.com/login/device/code`
+   - Parameters: `client_id`, `scope=public_repo`
+   - Response: `device_code`, `user_code`, `verification_uri`, `expires_in`, `interval`
+
+2. **User Authorization**
+   - Display `user_code` to user
+   - Direct user to `verification_uri` (https://github.com/login/device)
+   - Open browser automatically if possible
+
+3. **Poll for Access Token**
+   - POST to `https://github.com/login/oauth/access_token`
+   - Parameters: `client_id`, `device_code`, `grant_type=urn:ietf:params:oauth:grant-type:device_code`
+   - Poll at `interval` seconds until success or expiration
+   - Handle `authorization_pending`, `slow_down`, `expired_token`, `access_denied` responses
+
+4. **Store Token**
+   - Save access token to `~/.vulhub/config.toml` under `[github]` section
+   - Token format: OAuth access token (starts with `gho_`)
+
+#### Implementation Notes
+
+- OAuth implementation is in `internal/github/oauth.go`
+- Device flow callbacks allow UI customization
+- Browser opening is platform-specific (darwin: `open`, windows: `cmd /c start`, linux: `xdg-open`)
+- Environment variable `GITHUB_TOKEN` takes precedence over saved OAuth token

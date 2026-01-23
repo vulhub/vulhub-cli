@@ -177,6 +177,10 @@ func (c *GitHubClient) ListDirectoryContents(ctx context.Context, owner, repo, p
 
 	_, dirContents, resp, err := c.ghClient.Repositories.GetContents(ctx, owner, repo, path, opts)
 	if err != nil {
+		// Check for rate limit error
+		if wrappedErr := wrapRateLimitError(resp.Response, err); wrappedErr == ErrRateLimited {
+			return nil, ErrRateLimited
+		}
 		return nil, fmt.Errorf("failed to list directory contents: %w", err)
 	}
 	defer func() {

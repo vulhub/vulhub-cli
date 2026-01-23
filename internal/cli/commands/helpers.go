@@ -3,6 +3,7 @@ package commands
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 	"runtime"
@@ -11,6 +12,7 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/vulhub/vulhub-cli/internal/cli/ui"
+	"github.com/vulhub/vulhub-cli/internal/github"
 	"github.com/vulhub/vulhub-cli/pkg/types"
 )
 
@@ -155,7 +157,9 @@ func (c *Commands) ensureInitialized(ctx context.Context) (bool, error) {
 
 	// Download environments.toml
 	table.PrintInfo("Downloading environment list from GitHub...")
-	envData, err := c.Downloader.DownloadEnvironmentsList(ctx)
+	envData, err := c.downloadWithRateLimitRetry(ctx, func() ([]byte, error) {
+		return c.Downloader.DownloadEnvironmentsList(ctx)
+	})
 	if err != nil {
 		return false, fmt.Errorf("failed to download environments list: %w", err)
 	}
@@ -248,7 +252,9 @@ func (c *Commands) performSync(ctx context.Context, table *ui.Table) (*syncResul
 
 	// Download latest environments.toml
 	table.PrintInfo("Downloading latest environment list from GitHub...")
-	envData, err := c.Downloader.DownloadEnvironmentsList(ctx)
+	envData, err := c.downloadWithRateLimitRetry(ctx, func() ([]byte, error) {
+		return c.Downloader.DownloadEnvironmentsList(ctx)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to download environments list: %w", err)
 	}
@@ -273,4 +279,38 @@ func (c *Commands) performSync(ctx context.Context, table *ui.Table) (*syncResul
 		PreviousCount: len(currentEnvs.Environment),
 		CurrentCount:  len(newEnvs.Environment),
 	}, nil
+}
+
+// downloadWithRateLimitRetry wraps a download function and handles rate limit errors
+// by prompting the user to set up a GitHub token and retrying if successful
+func (c *Commands) downloadWithRateLimitRetry(ctx context.Context, downloadFn func() ([]byte, error)) ([]byte, error) {
+	data, err := downloadFn()
+	if err == nil {
+		return data, nil
+	}
+
+	// Check if this is a rate limit error
+	if !github.IsRateLimitError(err) && !errors.Is(err, github.ErrRateLimited) {
+		return nil, err
+	}
+
+	// Check if user already has a token configured
+	cfg := c.Config.Get()
+	if cfg.GitHub.Token != "" {
+		// Token is already configured but still rate limited
+		// This shouldn't happen with a valid token, so just return the error
+		return nil, fmt.Errorf("rate limit exceeded even with token configured: %w", err)
+	}
+
+	// Prompt user to set up token
+	if c.PromptTokenSetup(ctx) {
+		// Token was set up, retry the download
+		// Note: The downloader needs to be recreated with the new token
+		// For now, just indicate success and let them retry the command
+		fmt.Println()
+		fmt.Println("Token saved! Please run the command again to continue.")
+		return nil, fmt.Errorf("please retry the command with the new token")
+	}
+
+	return nil, err
 }

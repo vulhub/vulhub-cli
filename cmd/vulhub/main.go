@@ -73,27 +73,12 @@ func run(ctx context.Context) error {
 		fx.Populate(&cliApp),
 	)
 
-	// Start fx (initializes dependencies)
+	// Start fx (initializes dependencies and loads config)
 	if err := app.Start(ctx); err != nil {
 		return err
 	}
 	defer app.Stop(ctx)
 
-	// Load configuration
-	cfgMgr := getCfgMgr(app)
-	if cfgMgr != nil {
-		_ = cfgMgr.Load(ctx)
-	}
-
 	// Run CLI
 	return cli.Run(ctx, cliApp, os.Args)
-}
-
-// getCfgMgr extracts the config manager from the fx app
-func getCfgMgr(app *fx.App) config.Manager {
-	var cfgMgr config.Manager
-	// We need to use a different approach since fx.Populate was already used
-	// The config is already loaded via the module, so we can just return nil
-	// and let the individual commands handle loading if needed
-	return cfgMgr
 }

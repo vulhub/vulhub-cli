@@ -112,12 +112,8 @@ func (m *ConfigManager) Save(ctx context.Context) error {
 	}
 	defer f.Close()
 
-	// Don't save the token to file (it should come from env var)
-	cfgToSave := *m.config
-	cfgToSave.GitHub.Token = ""
-
 	encoder := toml.NewEncoder(f)
-	if err := encoder.Encode(cfgToSave); err != nil {
+	if err := encoder.Encode(m.config); err != nil {
 		return fmt.Errorf("failed to encode config: %w", err)
 	}
 

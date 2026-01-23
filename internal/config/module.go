@@ -1,6 +1,8 @@
 package config
 
 import (
+	"context"
+
 	"go.uber.org/fx"
 )
 
@@ -13,6 +15,15 @@ var Module = fx.Module("config",
 			return m
 		},
 	),
+	fx.Invoke(func(lc fx.Lifecycle, m *ConfigManager) {
+		lc.Append(fx.Hook{
+			OnStart: func(ctx context.Context) error {
+				// Load config on startup (ignore errors for uninitialized state)
+				_ = m.Load(ctx)
+				return nil
+			},
+		})
+	}),
 )
 
 // ModuleWithPath provides the config module with a custom config path

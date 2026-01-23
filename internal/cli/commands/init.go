@@ -60,7 +60,9 @@ func (c *Commands) runInit(ctx context.Context, force bool) error {
 
 	// Download environments.toml
 	table.PrintInfo("Downloading environment list from GitHub...")
-	envData, err := c.Downloader.DownloadEnvironmentsList(ctx)
+	envData, err := c.downloadWithRateLimitRetry(ctx, func() ([]byte, error) {
+		return c.Downloader.DownloadEnvironmentsList(ctx)
+	})
 	if err != nil {
 		return fmt.Errorf("failed to download environments list: %w", err)
 	}

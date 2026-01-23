@@ -2,6 +2,8 @@ package ui
 
 import (
 	"fmt"
+	"os/exec"
+	"runtime"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -9,6 +11,22 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/vulhub/vulhub-cli/pkg/types"
 )
+
+// OpenBrowser opens the specified URL in the default browser
+func OpenBrowser(url string) error {
+	var cmd *exec.Cmd
+
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", url)
+	case "windows":
+		cmd = exec.Command("cmd", "/c", "start", url)
+	default: // linux, freebsd, etc.
+		cmd = exec.Command("xdg-open", url)
+	}
+
+	return cmd.Start()
+}
 
 var (
 	browserTitleStyle = lipgloss.NewStyle().
