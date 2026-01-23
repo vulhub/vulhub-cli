@@ -14,7 +14,9 @@
       "Bash(go get:*)",
       "Bash(go test:*)",
       "Bash(tree:*)",
-      "Bash(go run:*)"
+      "Bash(go run:*)",
+      "Bash(docker info:*)",
+      "Bash(echo:*)"
     ]
   }
 }

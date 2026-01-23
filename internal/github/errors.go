@@ -2,7 +2,6 @@ package github
 
 import (
 	"errors"
-	"net/http"
 	"strings"
 
 	gh "github.com/google/go-github/v68/github"
@@ -37,33 +36,44 @@ func IsRateLimitError(err error) bool {
 	// Check error message for rate limit indicators
 	errStr := strings.ToLower(err.Error())
 	if strings.Contains(errStr, "rate limit") ||
-		strings.Contains(errStr, "api rate limit exceeded") ||
-		strings.Contains(errStr, "403") && strings.Contains(errStr, "limit") {
+		strings.Contains(errStr, "api rate limit exceeded") {
 		return true
 	}
 
 	return false
 }
 
-// wrapRateLimitError checks if the response indicates a rate limit error
-// and wraps it with our custom error type
-func wrapRateLimitError(resp *http.Response, err error) error {
+// checkRateLimitError checks if the error is a rate limit error and returns ErrRateLimited if so.
+// This function is used to wrap API call errors with a consistent rate limit error.
+func checkRateLimitError(resp *gh.Response, err error) error {
 	if err == nil {
 		return nil
 	}
 
-	// Check HTTP status code
-	if resp != nil && resp.StatusCode == http.StatusForbidden {
-		// GitHub returns 403 for rate limit exceeded
+	// Check for go-github rate limit errors directly
+	var rateLimitErr *gh.RateLimitError
+	if errors.As(err, &rateLimitErr) {
+		return ErrRateLimited
+	}
+
+	var abuseErr *gh.AbuseRateLimitError
+	if errors.As(err, &abuseErr) {
+		return ErrRateLimited
+	}
+
+	// Check response status code (403 often indicates rate limit)
+	if resp != nil && resp.StatusCode == 403 {
+		// Check if this is specifically a rate limit error
 		if IsRateLimitError(err) {
 			return ErrRateLimited
 		}
 	}
 
-	// Check the error itself
+	// Check error message as fallback
 	if IsRateLimitError(err) {
 		return ErrRateLimited
 	}
 
-	return err
+	// Not a rate limit error, return nil to indicate caller should handle original error
+	return nil
 }

@@ -5,18 +5,11 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"net/http"
 	"os"
 	"path/filepath"
 
 	gh "github.com/google/go-github/v68/github"
 	"github.com/vulhub/vulhub-cli/pkg/types"
-	"resty.dev/v3"
-)
-
-const (
-	// RawContentBaseURL is the base URL for raw content downloads
-	RawContentBaseURL = "https://raw.githubusercontent.com"
 )
 
 // Client defines the interface for GitHub operations
@@ -37,12 +30,10 @@ type Client interface {
 	ListDirectoryContents(ctx context.Context, owner, repo, path, ref string) ([]types.ContentEntry, error)
 }
 
-// GitHubClient implements the Client interface
+// GitHubClient implements the Client interface using go-github
 type GitHubClient struct {
-	ghClient   *gh.Client
-	httpClient *resty.Client
-	logger     *slog.Logger
-	token      string
+	client *gh.Client
+	logger *slog.Logger
 }
 
 // ClientConfig holds configuration for the GitHub client
@@ -59,47 +50,45 @@ func NewClient(cfg ClientConfig) *GitHubClient {
 	}
 
 	// Create GitHub API client
-	var ghClient *gh.Client
+	var client *gh.Client
 	if cfg.Token != "" {
-		ghClient = gh.NewClient(nil).WithAuthToken(cfg.Token)
+		client = gh.NewClient(nil).WithAuthToken(cfg.Token)
 	} else {
-		ghClient = gh.NewClient(nil)
+		client = gh.NewClient(nil)
 	}
-
-	// Create HTTP client for raw downloads
-	httpClient := resty.New()
-	if cfg.Token != "" {
-		httpClient.SetHeader("Authorization", "token "+cfg.Token)
-	}
-	httpClient.SetHeader("Accept", "application/vnd.github.v3.raw")
 
 	return &GitHubClient{
-		ghClient:   ghClient,
-		httpClient: httpClient,
-		logger:     logger,
-		token:      cfg.Token,
+		client: client,
+		logger: logger,
 	}
 }
 
 // DownloadFile downloads a single file from a repository
 func (c *GitHubClient) DownloadFile(ctx context.Context, owner, repo, path, ref string) ([]byte, error) {
-	url := fmt.Sprintf("%s/%s/%s/%s/%s", RawContentBaseURL, owner, repo, ref, path)
+	c.logger.Debug("downloading file", "owner", owner, "repo", repo, "path", path, "ref", ref)
 
-	c.logger.Debug("downloading file", "url", url)
+	opts := &gh.RepositoryContentGetOptions{Ref: ref}
 
-	resp, err := c.httpClient.R().
-		SetContext(ctx).
-		Get(url)
-
+	fileContent, _, resp, err := c.client.Repositories.GetContents(ctx, owner, repo, path, opts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to download file: %w", err)
+		if err := checkRateLimitError(resp, err); err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("failed to get file content: %w", err)
+	}
+	closeResponse(resp)
+
+	if fileContent == nil {
+		return nil, fmt.Errorf("path %s is not a file", path)
 	}
 
-	if resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("failed to download file: status %d", resp.StatusCode())
+	// Get decoded content
+	content, err := fileContent.GetContent()
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode file content: %w", err)
 	}
 
-	return resp.Bytes(), nil
+	return []byte(content), nil
 }
 
 // DownloadDirectory downloads all files in a directory from a repository
@@ -108,7 +97,7 @@ func (c *GitHubClient) DownloadDirectory(ctx context.Context, owner, repo, path,
 
 	contents, err := c.ListDirectoryContents(ctx, owner, repo, path, ref)
 	if err != nil {
-		return fmt.Errorf("failed to list directory contents: %w", err)
+		return err // Error already wrapped with rate limit check
 	}
 
 	for _, entry := range contents {
@@ -133,7 +122,7 @@ func (c *GitHubClient) DownloadDirectory(ctx context.Context, owner, repo, path,
 			// Download file
 			data, err := c.DownloadFile(ctx, owner, repo, entryPath, ref)
 			if err != nil {
-				return fmt.Errorf("failed to download file %s: %w", entryPath, err)
+				return err // Error already wrapped with rate limit check
 			}
 
 			if err := os.WriteFile(destPath, data, 0644); err != nil {
@@ -158,10 +147,14 @@ func (c *GitHubClient) GetFileContent(ctx context.Context, owner, repo, path, re
 
 // GetLatestRelease gets the latest release information
 func (c *GitHubClient) GetLatestRelease(ctx context.Context, owner, repo string) (*types.Release, error) {
-	release, _, err := c.ghClient.Repositories.GetLatestRelease(ctx, owner, repo)
+	release, resp, err := c.client.Repositories.GetLatestRelease(ctx, owner, repo)
 	if err != nil {
+		if err := checkRateLimitError(resp, err); err != nil {
+			return nil, err
+		}
 		return nil, fmt.Errorf("failed to get latest release: %w", err)
 	}
+	closeResponse(resp)
 
 	return &types.Release{
 		TagName:     release.GetTagName(),
@@ -175,20 +168,14 @@ func (c *GitHubClient) GetLatestRelease(ctx context.Context, owner, repo string)
 func (c *GitHubClient) ListDirectoryContents(ctx context.Context, owner, repo, path, ref string) ([]types.ContentEntry, error) {
 	opts := &gh.RepositoryContentGetOptions{Ref: ref}
 
-	_, dirContents, resp, err := c.ghClient.Repositories.GetContents(ctx, owner, repo, path, opts)
+	_, dirContents, resp, err := c.client.Repositories.GetContents(ctx, owner, repo, path, opts)
 	if err != nil {
-		// Check for rate limit error
-		if wrappedErr := wrapRateLimitError(resp.Response, err); wrappedErr == ErrRateLimited {
-			return nil, ErrRateLimited
+		if err := checkRateLimitError(resp, err); err != nil {
+			return nil, err
 		}
 		return nil, fmt.Errorf("failed to list directory contents: %w", err)
 	}
-	defer func() {
-		if resp != nil && resp.Body != nil {
-			io.Copy(io.Discard, resp.Body)
-			resp.Body.Close()
-		}
-	}()
+	closeResponse(resp)
 
 	entries := make([]types.ContentEntry, 0, len(dirContents))
 	for _, content := range dirContents {
@@ -206,4 +193,12 @@ func (c *GitHubClient) ListDirectoryContents(ctx context.Context, owner, repo, p
 	}
 
 	return entries, nil
+}
+
+// closeResponse safely closes the response body
+func closeResponse(resp *gh.Response) {
+	if resp != nil && resp.Body != nil {
+		io.Copy(io.Discard, resp.Body)
+		resp.Body.Close()
+	}
 }
