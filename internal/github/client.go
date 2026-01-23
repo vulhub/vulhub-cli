@@ -63,6 +63,16 @@ func NewClient(cfg ClientConfig) *GitHubClient {
 	}
 }
 
+// SetToken updates the client's authentication token dynamically.
+// This allows refreshing the client after OAuth authentication without recreating the client.
+func (c *GitHubClient) SetToken(token string) {
+	if token != "" {
+		c.client = gh.NewClient(nil).WithAuthToken(token)
+	} else {
+		c.client = gh.NewClient(nil)
+	}
+}
+
 // DownloadFile downloads a single file from a repository
 func (c *GitHubClient) DownloadFile(ctx context.Context, owner, repo, path, ref string) ([]byte, error) {
 	c.logger.Debug("downloading file", "owner", owner, "repo", repo, "path", path, "ref", ref)
@@ -71,9 +81,6 @@ func (c *GitHubClient) DownloadFile(ctx context.Context, owner, repo, path, ref 
 
 	fileContent, _, resp, err := c.client.Repositories.GetContents(ctx, owner, repo, path, opts)
 	if err != nil {
-		if err := checkRateLimitError(resp, err); err != nil {
-			return nil, err
-		}
 		return nil, fmt.Errorf("failed to get file content: %w", err)
 	}
 	closeResponse(resp)
@@ -149,9 +156,6 @@ func (c *GitHubClient) GetFileContent(ctx context.Context, owner, repo, path, re
 func (c *GitHubClient) GetLatestRelease(ctx context.Context, owner, repo string) (*types.Release, error) {
 	release, resp, err := c.client.Repositories.GetLatestRelease(ctx, owner, repo)
 	if err != nil {
-		if err := checkRateLimitError(resp, err); err != nil {
-			return nil, err
-		}
 		return nil, fmt.Errorf("failed to get latest release: %w", err)
 	}
 	closeResponse(resp)
@@ -170,9 +174,6 @@ func (c *GitHubClient) ListDirectoryContents(ctx context.Context, owner, repo, p
 
 	_, dirContents, resp, err := c.client.Repositories.GetContents(ctx, owner, repo, path, opts)
 	if err != nil {
-		if err := checkRateLimitError(resp, err); err != nil {
-			return nil, err
-		}
 		return nil, fmt.Errorf("failed to list directory contents: %w", err)
 	}
 	closeResponse(resp)

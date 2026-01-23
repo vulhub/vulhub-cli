@@ -3,7 +3,6 @@ package commands
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"os/exec"
 	"runtime"
@@ -155,28 +154,10 @@ func (c *Commands) ensureInitialized(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("failed to save configuration: %w", err)
 	}
 
-	// Download environments.toml
-	table.PrintInfo("Downloading environment list from GitHub...")
-	envData, err := c.downloadWithRateLimitRetry(ctx, func() ([]byte, error) {
-		return c.Downloader.DownloadEnvironmentsList(ctx)
-	})
+	// Download and save environments list (reuse performSync logic)
+	result, err := c.performSync(ctx, table)
 	if err != nil {
-		return false, fmt.Errorf("failed to download environments list: %w", err)
-	}
-
-	// Parse and save environments
-	var envList types.EnvironmentList
-	if _, err := toml.Decode(string(envData), &envList); err != nil {
-		return false, fmt.Errorf("failed to parse environments list: %w", err)
-	}
-
-	if err := c.Config.SaveEnvironments(ctx, &envList); err != nil {
-		return false, fmt.Errorf("failed to save environments list: %w", err)
-	}
-
-	// Update last sync time
-	if err := c.Config.UpdateLastSyncTime(ctx); err != nil {
-		return false, fmt.Errorf("failed to update sync time: %w", err)
+		return false, err
 	}
 
 	// Ensure environments directory exists
@@ -184,7 +165,7 @@ func (c *Commands) ensureInitialized(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("failed to create environments directory: %w", err)
 	}
 
-	table.PrintSuccess(fmt.Sprintf("Initialization complete! Found %d environments.", len(envList.Environment)))
+	table.PrintSuccess(fmt.Sprintf("Initialization complete! Found %d environments.", result.CurrentCount))
 	fmt.Println()
 
 	return true, nil
@@ -281,36 +262,59 @@ func (c *Commands) performSync(ctx context.Context, table *ui.Table) (*syncResul
 	}, nil
 }
 
-// downloadWithRateLimitRetry wraps a download function and handles rate limit errors
-// by prompting the user to set up a GitHub token and retrying if successful
-func (c *Commands) downloadWithRateLimitRetry(ctx context.Context, downloadFn func() ([]byte, error)) ([]byte, error) {
-	data, err := downloadFn()
+// refreshGitHubClient updates the GitHub client with the current token from config.
+// This should be called after OAuth authentication to apply the new token.
+func (c *Commands) refreshGitHubClient() {
+	if c.GitHubClient == nil {
+		return
+	}
+	cfg := c.Config.Get()
+	c.GitHubClient.SetToken(cfg.GitHub.Token)
+}
+
+// withRateLimitRetry executes the given function and handles rate limit errors.
+// If a rate limit error occurs and the user is not authenticated, it triggers OAuth
+// authentication and automatically retries the operation with the new token.
+func (c *Commands) withRateLimitRetry(ctx context.Context, fn func() error) error {
+	err := fn()
 	if err == nil {
-		return data, nil
+		return nil
 	}
 
 	// Check if this is a rate limit error
-	if !github.IsRateLimitError(err) && !errors.Is(err, github.ErrRateLimited) {
-		return nil, err
+	if !github.IsRateLimitError(err) {
+		return err
 	}
 
 	// Check if user already has a token configured
 	cfg := c.Config.Get()
 	if cfg.GitHub.Token != "" {
 		// Token is already configured but still rate limited
-		// This shouldn't happen with a valid token, so just return the error
-		return nil, fmt.Errorf("rate limit exceeded even with token configured: %w", err)
+		return fmt.Errorf("rate limit exceeded even with token configured: %w", err)
 	}
 
 	// Prompt user to set up token
 	if c.PromptTokenSetup(ctx) {
-		// Token was set up, retry the download
-		// Note: The downloader needs to be recreated with the new token
-		// For now, just indicate success and let them retry the command
+		// Token was set up, refresh the client and retry
+		c.refreshGitHubClient()
 		fmt.Println()
-		fmt.Println("Token saved! Please run the command again to continue.")
-		return nil, fmt.Errorf("please retry the command with the new token")
+		fmt.Println("Retrying operation...")
+		fmt.Println()
+		return fn()
 	}
 
-	return nil, err
+	return err
+}
+
+// downloadWithRateLimitRetry wraps a download function and handles rate limit errors
+// by prompting the user to set up a GitHub token and retrying if successful.
+// This is a convenience wrapper around withRateLimitRetry for functions that return data.
+func (c *Commands) downloadWithRateLimitRetry(ctx context.Context, downloadFn func() ([]byte, error)) ([]byte, error) {
+	var data []byte
+	err := c.withRateLimitRetry(ctx, func() error {
+		var downloadErr error
+		data, downloadErr = downloadFn()
+		return downloadErr
+	})
+	return data, err
 }

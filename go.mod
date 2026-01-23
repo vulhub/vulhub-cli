@@ -7,9 +7,9 @@ require (
 	github.com/charmbracelet/bubbles v0.21.1-0.20251124105314-ff8b5a8e17c9
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/huh v0.8.0
-	github.com/charmbracelet/huh/spinner v0.0.0-20251215014908-6f7d32faaff3
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/google/go-github/v68 v68.0.0
+	github.com/muesli/termenv v0.16.0
 	github.com/samber/lo v1.52.0
 	github.com/urfave/cli/v3 v3.6.2
 	go.uber.org/fx v1.24.0
@@ -37,7 +37,6 @@ require (
 	github.com/mitchellh/hashstructure/v2 v2.0.2 // indirect
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
-	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.uber.org/dig v1.19.0 // indirect

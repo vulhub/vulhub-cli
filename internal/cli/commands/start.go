@@ -8,7 +8,6 @@ import (
 
 	"github.com/vulhub/vulhub-cli/internal/cli/ui"
 	"github.com/vulhub/vulhub-cli/internal/environment"
-	"github.com/vulhub/vulhub-cli/internal/github"
 	"github.com/vulhub/vulhub-cli/pkg/types"
 )
 
@@ -113,18 +112,9 @@ func (c *Commands) runStart(ctx context.Context, keyword string, opts startOptio
 		ForceRecreate: opts.forceRecreate,
 	}
 
-	if err := c.Environment.Start(ctx, *env, startOpts); err != nil {
-		// Check for rate limit error and prompt for token setup
-		if github.IsRateLimitError(err) {
-			cfg := c.Config.Get()
-			if cfg.GitHub.Token == "" {
-				if c.PromptTokenSetup(ctx) {
-					fmt.Println()
-					fmt.Println("Token saved! Please run the command again to continue.")
-					return nil
-				}
-			}
-		}
+	if err := c.withRateLimitRetry(ctx, func() error {
+		return c.Environment.Start(ctx, *env, startOpts)
+	}); err != nil {
 		return err
 	}
 

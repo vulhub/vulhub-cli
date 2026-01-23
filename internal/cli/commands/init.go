@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/BurntSushi/toml"
 	"github.com/urfave/cli/v3"
 
 	"github.com/vulhub/vulhub-cli/internal/cli/ui"
@@ -58,28 +57,10 @@ func (c *Commands) runInit(ctx context.Context, force bool) error {
 		return fmt.Errorf("failed to save configuration: %w", err)
 	}
 
-	// Download environments.toml
-	table.PrintInfo("Downloading environment list from GitHub...")
-	envData, err := c.downloadWithRateLimitRetry(ctx, func() ([]byte, error) {
-		return c.Downloader.DownloadEnvironmentsList(ctx)
-	})
+	// Download and save environments list (reuse performSync logic)
+	result, err := c.performSync(ctx, table)
 	if err != nil {
-		return fmt.Errorf("failed to download environments list: %w", err)
-	}
-
-	// Parse and save environments
-	var envList types.EnvironmentList
-	if _, err := toml.Decode(string(envData), &envList); err != nil {
-		return fmt.Errorf("failed to parse environments list: %w", err)
-	}
-
-	if err := c.Config.SaveEnvironments(ctx, &envList); err != nil {
-		return fmt.Errorf("failed to save environments list: %w", err)
-	}
-
-	// Update last sync time
-	if err := c.Config.UpdateLastSyncTime(ctx); err != nil {
-		return fmt.Errorf("failed to update sync time: %w", err)
+		return err
 	}
 
 	// Ensure environments directory exists
@@ -87,7 +68,7 @@ func (c *Commands) runInit(ctx context.Context, force bool) error {
 		return fmt.Errorf("failed to create environments directory: %w", err)
 	}
 
-	table.PrintSuccess(fmt.Sprintf("Initialization complete! Found %d environments.", len(envList.Environment)))
+	table.PrintSuccess(fmt.Sprintf("Initialization complete! Found %d environments.", result.CurrentCount))
 	fmt.Println()
 	fmt.Println("Configuration directory:", c.Config.Paths().ConfigDir())
 	fmt.Println()

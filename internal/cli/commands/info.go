@@ -90,9 +90,13 @@ func (c *Commands) runInfo(ctx context.Context, keyword string, opts infoOptions
 		env = result.Environment
 	}
 
-	// Get environment info
-	info, err := c.Environment.GetInfo(ctx, *env)
-	if err != nil {
+	// Get environment info with rate limit retry
+	var info *types.EnvironmentInfo
+	if err := c.withRateLimitRetry(ctx, func() error {
+		var getErr error
+		info, getErr = c.Environment.GetInfo(ctx, *env)
+		return getErr
+	}); err != nil {
 		return err
 	}
 

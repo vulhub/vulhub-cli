@@ -28,9 +28,10 @@ func NewApp(
 	envMgr environment.Manager,
 	res resolver.Resolver,
 	downloader *github.Downloader,
+	ghClient *github.GitHubClient,
 ) *cli.Command {
 	// Create commands instance with all dependencies
-	cmds := commands.New(cfgMgr, envMgr, res, downloader)
+	cmds := commands.New(cfgMgr, envMgr, res, downloader, ghClient)
 
 	return &cli.Command{
 		Name:    "vulhub",

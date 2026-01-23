@@ -178,9 +178,9 @@ func (c *Commands) performDeviceFlow(ctx context.Context) (string, error) {
 	var deviceCodeResp *github.DeviceCodeResponse
 	var requestErr error
 
-	err := ui.RunWithSpinner("Requesting authorization code...", func() {
+	err := ui.NewSpinner().Title("Requesting authorization code...").Action(func() {
 		deviceCodeResp, requestErr = github.RequestDeviceCode(ctx)
-	})
+	}).Run()
 
 	if err != nil {
 		return "", err
@@ -209,7 +209,7 @@ func (c *Commands) performDeviceFlow(ctx context.Context) (string, error) {
 	interval := time.Duration(deviceCodeResp.Interval) * time.Second
 	expiresAt := time.Now().Add(time.Duration(deviceCodeResp.ExpiresIn) * time.Second)
 
-	err = ui.RunWithSpinner("Waiting for authorization...", func() {
+	err = ui.NewSpinner().Title("Waiting for authorization...").Action(func() {
 		for {
 			select {
 			case <-ctx.Done():
@@ -238,7 +238,7 @@ func (c *Commands) performDeviceFlow(ctx context.Context) (string, error) {
 				return
 			}
 		}
-	})
+	}).Run()
 
 	if err != nil {
 		return "", err

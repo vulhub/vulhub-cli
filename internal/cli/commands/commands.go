@@ -13,10 +13,11 @@ import (
 // All command logic is implemented as methods on this struct,
 // allowing direct access to dependencies without parameter passing.
 type Commands struct {
-	Config      config.Manager
-	Environment environment.Manager
-	Resolver    resolver.Resolver
-	Downloader  *github.Downloader
+	Config       config.Manager
+	Environment  environment.Manager
+	Resolver     resolver.Resolver
+	Downloader   *github.Downloader
+	GitHubClient *github.GitHubClient
 }
 
 // New creates a new Commands instance with all dependencies injected via fx.
@@ -25,12 +26,14 @@ func New(
 	envMgr environment.Manager,
 	res resolver.Resolver,
 	downloader *github.Downloader,
+	ghClient *github.GitHubClient,
 ) *Commands {
 	return &Commands{
-		Config:      cfgMgr,
-		Environment: envMgr,
-		Resolver:    res,
-		Downloader:  downloader,
+		Config:       cfgMgr,
+		Environment:  envMgr,
+		Resolver:     res,
+		Downloader:   downloader,
+		GitHubClient: ghClient,
 	}
 }
 

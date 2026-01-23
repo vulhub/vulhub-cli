@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/charmbracelet/huh"
-	"github.com/charmbracelet/huh/spinner"
 )
 
 // StatusCard displays a status card with icon and message
@@ -115,14 +114,6 @@ func (m *MessageBox) Render() string {
 // Print prints the message box to stdout
 func (m *MessageBox) Print() {
 	fmt.Println(m.Render())
-}
-
-// RunWithSpinner runs an action with a spinner
-func RunWithSpinner(title string, action func()) error {
-	return spinner.New().
-		Title(title).
-		Action(action).
-		Run()
 }
 
 // ConfirmPrompt shows a confirmation prompt
