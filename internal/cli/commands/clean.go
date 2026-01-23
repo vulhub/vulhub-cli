@@ -7,7 +7,6 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/vulhub/vulhub-cli/internal/cli/ui"
-	"github.com/vulhub/vulhub-cli/internal/environment"
 	"github.com/vulhub/vulhub-cli/pkg/types"
 )
 
@@ -15,29 +14,13 @@ import (
 func (c *Commands) Clean() *cli.Command {
 	return &cli.Command{
 		Name:      "clean",
-		Usage:     "Clean up a vulnerability environment",
+		Usage:     "Completely remove an environment (containers, volumes, and local files)",
 		ArgsUsage: "[keyword]",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:    "yes",
 				Aliases: []string{"y"},
 				Usage:   "Skip confirmation prompts",
-			},
-			&cli.BoolFlag{
-				Name:  "volumes",
-				Usage: "Remove volumes",
-			},
-			&cli.BoolFlag{
-				Name:  "images",
-				Usage: "Remove images",
-			},
-			&cli.BoolFlag{
-				Name:  "files",
-				Usage: "Remove local files",
-			},
-			&cli.BoolFlag{
-				Name:  "all",
-				Usage: "Remove everything (volumes, images, and files)",
 			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
@@ -46,25 +29,12 @@ func (c *Commands) Clean() *cli.Command {
 				return fmt.Errorf("please provide a keyword (CVE number, path, or application name)")
 			}
 
-			all := cmd.Bool("all")
-			return c.runClean(ctx, keyword, cleanOptions{
-				yes:     cmd.Bool("yes"),
-				volumes: cmd.Bool("volumes") || all,
-				images:  cmd.Bool("images") || all,
-				files:   cmd.Bool("files") || all,
-			})
+			return c.runClean(ctx, keyword, cmd.Bool("yes"))
 		},
 	}
 }
 
-type cleanOptions struct {
-	yes     bool
-	volumes bool
-	images  bool
-	files   bool
-}
-
-func (c *Commands) runClean(ctx context.Context, keyword string, opts cleanOptions) error {
+func (c *Commands) runClean(ctx context.Context, keyword string, skipConfirm bool) error {
 	table := ui.NewTable()
 	selector := ui.NewSelector()
 
@@ -91,12 +61,12 @@ func (c *Commands) runClean(ctx context.Context, keyword string, opts cleanOptio
 	var env *types.Environment
 
 	if result.HasNoMatches() {
-		return fmt.Errorf("no environment found matching '%s'", keyword)
+		return errNoEnvironmentFound(keyword)
 	}
 
 	if result.HasMultipleMatches() {
-		if opts.yes {
-			return fmt.Errorf("multiple environments found matching '%s'. Please provide a more specific keyword", keyword)
+		if skipConfirm {
+			return errMultipleEnvironmentsFound(keyword)
 		}
 
 		envs := result.GetMatchedEnvironments()
@@ -108,44 +78,14 @@ func (c *Commands) runClean(ctx context.Context, keyword string, opts cleanOptio
 		env = result.Environment
 	}
 
-	// Confirm if not skipped
-	if !opts.yes {
-		msg := fmt.Sprintf("Clean environment '%s'", env.Path)
-		if opts.volumes {
-			msg += " (including volumes)"
-		}
-		if opts.images {
-			msg += " (including images)"
-		}
-		if opts.files {
-			msg += " (including local files)"
-		}
-		msg += "?"
-
-		confirmed, err := selector.Confirm(msg, false)
-		if err != nil {
-			return err
-		}
-		if !confirmed {
-			fmt.Println("Clean cancelled.")
-			return nil
-		}
-	}
-
 	// Clean the environment
-	table.PrintInfo(fmt.Sprintf("Cleaning environment: %s", env.Path))
+	table.PrintInfo(fmt.Sprintf("Stopping and removing environment: %s", env.Path))
 
-	cleanOpts := environment.CleanOptions{
-		RemoveVolumes: opts.volumes,
-		RemoveImages:  opts.images,
-		RemoveFiles:   opts.files,
-	}
-
-	if err := c.Environment.Clean(ctx, *env, cleanOpts); err != nil {
+	if err := c.Environment.Down(ctx, *env); err != nil {
 		return err
 	}
 
-	table.PrintSuccess(fmt.Sprintf("Environment '%s' cleaned successfully!", env.Path))
+	table.PrintSuccess(fmt.Sprintf("Environment '%s' has been stopped and removed!", env.Path))
 
 	return nil
 }

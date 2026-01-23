@@ -83,12 +83,12 @@ The following files SHALL be created in `~/.vulhub/` directory:
 | `vulhub stop [keyword]` | Stop a running vulnerability environment |
 | `vulhub down [keyword]` | Completely remove an environment (containers, volumes, and local files) |
 | `vulhub restart [keyword]` | Restart a vulnerability environment |
+| `vulhub clean [keyword]` | Clean up environment files and Docker resources |
 | `vulhub list` | List all downloaded vulnerability environments |
 | `vulhub list-available` | List all available vulnerability environments |
 | `vulhub status` | Display status of all environments |
 | `vulhub search [keyword]` | Search for vulnerability environments |
 | `vulhub info [keyword]` | Display detailed information about a vulnerability environment |
-| `vulhub clean [keyword]` | Clean up environment files and Docker resources |
 | `vulhub github-auth` | Authenticate with GitHub using OAuth Device Flow |
 
 #### Acceptance Criteria
@@ -269,19 +269,19 @@ type GitHubClient interface {
 2. Call Docker Compose package to stop the environment
 3. Display confirmation message
 
-#### Subcommand: `down [keyword]`
+#### Subcommand: `restart [keyword]`
+
+1. Resolve keyword using Requirement 3 logic
+2. Call Docker Compose package to restart the environment
+3. Display confirmation message
+
+#### Subcommand: `clean [keyword]`
 
 1. Resolve keyword using Requirement 3 logic
 2. If multiple matches, display interactive selection
 3. Call Docker Compose package to stop and remove containers, networks, and volumes (`docker compose down -v`)
 4. Remove local environment files (docker-compose.yml, etc.)
 5. Display confirmation message
-
-#### Subcommand: `restart [keyword]`
-
-1. Resolve keyword using Requirement 3 logic
-2. Call Docker Compose package to restart the environment
-3. Display confirmation message
 
 #### Subcommand: `list`
 
@@ -310,14 +310,6 @@ type GitHubClient interface {
    - Tags
    - Path in vulhub repository
    - README content (if available)
-
-#### Subcommand: `clean [keyword]`
-
-1. If keyword provided, resolve to specific environment
-2. Call Docker Compose package to remove containers and images
-3. Remove cached environment files from local storage
-4. If no keyword, prompt user to clean all or select specific environments
-5. Display cleanup summary (freed disk space)
 
 #### Subcommand: `github-auth`
 

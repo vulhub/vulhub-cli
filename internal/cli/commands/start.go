@@ -86,12 +86,12 @@ func (c *Commands) runStart(ctx context.Context, keyword string, opts startOptio
 	var env *types.Environment
 
 	if result.HasNoMatches() {
-		return fmt.Errorf("no environment found matching '%s'. Try 'vulhub search %s' to find environments", keyword, keyword)
+		return errNoEnvironmentFound(keyword)
 	}
 
 	if result.HasMultipleMatches() {
 		if opts.yes {
-			return fmt.Errorf("multiple environments found matching '%s'. Please provide a more specific keyword", keyword)
+			return errMultipleEnvironmentsFound(keyword)
 		}
 
 		envs := result.GetMatchedEnvironments()

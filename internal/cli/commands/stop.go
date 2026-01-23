@@ -61,12 +61,12 @@ func (c *Commands) runStop(ctx context.Context, keyword string, skipConfirm bool
 	var env *types.Environment
 
 	if result.HasNoMatches() {
-		return fmt.Errorf("no environment found matching '%s'", keyword)
+		return errNoEnvironmentFound(keyword)
 	}
 
 	if result.HasMultipleMatches() {
 		if skipConfirm {
-			return fmt.Errorf("multiple environments found matching '%s'. Please provide a more specific keyword", keyword)
+			return errMultipleEnvironmentsFound(keyword)
 		}
 
 		envs := result.GetMatchedEnvironments()

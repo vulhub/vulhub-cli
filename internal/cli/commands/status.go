@@ -70,7 +70,7 @@ func (c *Commands) runStatus(ctx context.Context, keyword string) error {
 	var env *types.Environment
 
 	if result.HasNoMatches() {
-		return fmt.Errorf("no environment found matching '%s'", keyword)
+		return errNoEnvironmentFound(keyword)
 	}
 
 	if result.HasMultipleMatches() {

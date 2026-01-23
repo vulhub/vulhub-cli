@@ -44,14 +44,13 @@ func (c *Commands) All() []*cli.Command {
 		c.Syncup(),
 		c.Start(),
 		c.Stop(),
-		c.Down(),
 		c.Restart(),
+		c.Clean(),
 		c.List(),
 		c.ListAvailable(),
 		c.Status(),
 		c.Search(),
 		c.Info(),
-		c.Clean(),
 		c.GitHubAuth(),
 	}
 }

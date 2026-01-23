@@ -262,6 +262,16 @@ func (c *Commands) performSync(ctx context.Context, table *ui.Table) (*syncResul
 	}, nil
 }
 
+// errNoEnvironmentFound returns a formatted error for when no environment matches the keyword
+func errNoEnvironmentFound(keyword string) error {
+	return fmt.Errorf("no environment found matching '%s'. Try 'vulhub search %s' to find environments", keyword, keyword)
+}
+
+// errMultipleEnvironmentsFound returns a formatted error for when multiple environments match
+func errMultipleEnvironmentsFound(keyword string) error {
+	return fmt.Errorf("multiple environments found matching '%s'. Please provide a more specific keyword", keyword)
+}
+
 // refreshGitHubClient updates the GitHub client with the current token from config.
 // This should be called after OAuth authentication to apply the new token.
 func (c *Commands) refreshGitHubClient() {

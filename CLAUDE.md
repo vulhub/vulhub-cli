@@ -55,46 +55,15 @@ User configuration stored in `~/.vulhub/`:
 | `vulhub syncup` | Update environment list from GitHub |
 | `vulhub start [keyword]` | Start a vulnerability environment |
 | `vulhub stop [keyword]` | Stop a running environment |
-| `vulhub down [keyword]` | Completely remove an environment (containers, volumes, local files) |
 | `vulhub restart [keyword]` | Restart an environment |
+| `vulhub clean [keyword]` | Completely remove an environment (containers, volumes, local files) |
 | `vulhub list` | List all downloaded environments |
 | `vulhub list-available` | List all available environments |
 | `vulhub search [keyword]` | Search for environments |
 | `vulhub info [keyword]` | Show environment details |
-| `vulhub clean [keyword]` | Clean up resources |
 | `vulhub github-auth` | Authenticate with GitHub using OAuth Device Flow |
 
 Keywords support: exact CVE numbers (`CVE-2021-44228`), exact paths (`log4j/CVE-2021-44228`), or fuzzy matching (`log4j`).
-
-## GitHub Authentication
-
-The tool downloads files from GitHub, which has API rate limits (60 requests/hour for unauthenticated users).
-
-### OAuth Device Flow Authentication
-
-The CLI uses GitHub OAuth Device Flow for authentication, providing a seamless experience:
-
-```bash
-vulhub github-auth           # Start OAuth authentication flow
-vulhub github-auth --status  # Check current authentication status
-vulhub github-auth --remove  # Remove saved authentication
-```
-
-**How it works:**
-1. Run `vulhub github-auth`
-2. A browser opens automatically to GitHub's device authorization page
-3. Enter the displayed code on the GitHub page
-4. Authorize the Vulhub CLI OAuth App
-5. Authentication completes automatically
-
-### Automatic Rate Limit Handling
-
-When a rate limit error occurs and the user is not authenticated, the CLI automatically prompts to start the OAuth flow.
-
-### Token Storage
-
-- OAuth token is saved in `~/.vulhub/config.toml`
-- Environment variable `GITHUB_TOKEN` takes precedence over saved token
 
 ## Build Commands
 
