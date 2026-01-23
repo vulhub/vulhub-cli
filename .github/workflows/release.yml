@@ -23,38 +23,23 @@ jobs:
           go-version: '1.24'
           cache: true
 
-      - name: Get version from tag
-        id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      - name: Compute metadata
+        id: meta
+        run: |
+          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          echo "COMMIT=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "BUILD_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
 
       - name: Run tests
         run: go test -v ./...
 
-      - name: Build binaries
+      - name: Build binaries (make build-all)
         env:
-          VERSION: ${{ steps.version.outputs.VERSION }}
-          COMMIT: ${{ github.sha }}
-          BUILD_TIME: ${{ github.event.head_commit.timestamp }}
+          VERSION: ${{ steps.meta.outputs.VERSION }}
+          COMMIT: ${{ steps.meta.outputs.COMMIT }}
+          BUILD_TIME: ${{ steps.meta.outputs.BUILD_TIME }}
         run: |
-          mkdir -p bin
-          
-          # Build for multiple platforms
-          LDFLAGS="-X main.Version=${VERSION} -X main.Commit=${COMMIT:0:7} -X main.BuildTime=${BUILD_TIME}"
-          
-          echo "Building linux/amd64..."
-          GOOS=linux GOARCH=amd64 go build -ldflags "$LDFLAGS" -o bin/vulhub-linux-amd64 ./cmd/vulhub
-          
-          echo "Building linux/arm64..."
-          GOOS=linux GOARCH=arm64 go build -ldflags "$LDFLAGS" -o bin/vulhub-linux-arm64 ./cmd/vulhub
-          
-          echo "Building darwin/amd64..."
-          GOOS=darwin GOARCH=amd64 go build -ldflags "$LDFLAGS" -o bin/vulhub-darwin-amd64 ./cmd/vulhub
-          
-          echo "Building darwin/arm64..."
-          GOOS=darwin GOARCH=arm64 go build -ldflags "$LDFLAGS" -o bin/vulhub-darwin-arm64 ./cmd/vulhub
-          
-          echo "Building windows/amd64..."
-          GOOS=windows GOARCH=amd64 go build -ldflags "$LDFLAGS" -o bin/vulhub-windows-amd64.exe ./cmd/vulhub
+          make build-all
 
       - name: Create checksums
         run: |
@@ -89,7 +74,7 @@ jobs:
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           
           if [ -n "$PREV_TAG" ]; then
-            echo "Generating changelog from $PREV_TAG to ${{ steps.version.outputs.VERSION }}"
+            echo "Generating changelog from $PREV_TAG to ${{ steps.meta.outputs.VERSION }}"
             CHANGELOG=$(git log --pretty=format:"- %s (%h)" ${PREV_TAG}..HEAD)
           else
             echo "No previous tag found, using all commits"
@@ -102,10 +87,10 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          name: ${{ steps.version.outputs.VERSION }}
+          name: ${{ steps.meta.outputs.VERSION }}
           body_path: changelog.txt
           draft: true
-          prerelease: ${{ contains(steps.version.outputs.VERSION, '-') }}
+          prerelease: ${{ contains(steps.meta.outputs.VERSION, '-') }}
           files: |
             bin/*.tar.gz
             bin/*.zip

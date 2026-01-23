@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/urfave/cli/v3"
 
@@ -32,6 +33,13 @@ func NewApp(
 ) *cli.Command {
 	// Create commands instance with all dependencies
 	cmds := commands.New(cfgMgr, envMgr, res, downloader, ghClient)
+
+	cli.VersionPrinter = func(cmd *cli.Command) {
+		fmt.Fprintf(cmd.Root().Writer,
+			"Vulhub CLI\n  Version:    %s\n  Commit:     %s\n  Build Time: %s\n",
+			Version, Commit, BuildTime,
+		)
+	}
 
 	return &cli.Command{
 		Name:    "vulhub",

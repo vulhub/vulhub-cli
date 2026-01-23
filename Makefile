@@ -16,7 +16,7 @@ GOVET=$(GOCMD) vet
 # Version information
 VERSION?=dev
 COMMIT=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-BUILD_TIME=$(shell date -u '+%Y-%m-%d_%H:%M:%S')
+BUILD_TIME=$(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 LDFLAGS=-ldflags "-X main.Version=$(VERSION) -X main.Commit=$(COMMIT) -X main.BuildTime=$(BUILD_TIME)"
 
 # Default target
