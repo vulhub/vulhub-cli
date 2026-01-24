@@ -218,13 +218,17 @@ func (c *Commands) checkAndPromptSync(ctx context.Context) (bool, error) {
 
 // syncResult holds the result of a sync operation
 type syncResult struct {
-	PreviousCount int
-	CurrentCount  int
+	PreviousCount    int
+	CurrentCount     int
+	PreviousSyncTime time.Time
+	CurrentSyncTime  time.Time
 }
 
 // performSync performs the actual sync operation and returns the result
 // This is the core sync logic shared by both checkAndPromptSync and Syncup command
 func (c *Commands) performSync(ctx context.Context, table *ui.Table) (*syncResult, error) {
+	previousSyncTime := c.Config.GetLastSyncTime()
+
 	// Load current environments
 	currentEnvs, err := c.Config.LoadEnvironments(ctx)
 	if err != nil {
@@ -255,10 +259,13 @@ func (c *Commands) performSync(ctx context.Context, table *ui.Table) (*syncResul
 	if err := c.Config.UpdateLastSyncTime(ctx); err != nil {
 		return nil, fmt.Errorf("failed to update sync time: %w", err)
 	}
+	currentSyncTime := c.Config.GetLastSyncTime()
 
 	return &syncResult{
-		PreviousCount: len(currentEnvs.Environment),
-		CurrentCount:  len(newEnvs.Environment),
+		PreviousCount:    len(currentEnvs.Environment),
+		CurrentCount:     len(newEnvs.Environment),
+		PreviousSyncTime: previousSyncTime,
+		CurrentSyncTime:  currentSyncTime,
 	}, nil
 }
 

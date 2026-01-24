@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/urfave/cli/v3"
 
@@ -36,6 +37,8 @@ func (c *Commands) runSyncup(ctx context.Context) error {
 
 	// Print detailed summary
 	table.PrintSuccess("Environment list updated successfully!")
+	fmt.Printf("Last sync: %s\n", formatSyncTime(result.PreviousSyncTime))
+	fmt.Printf("This sync: %s\n", formatSyncTime(result.CurrentSyncTime))
 	fmt.Printf("Previous: %d environments\n", result.PreviousCount)
 	fmt.Printf("Current:  %d environments\n", result.CurrentCount)
 
@@ -46,4 +49,11 @@ func (c *Commands) runSyncup(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func formatSyncTime(syncTime time.Time) string {
+	if syncTime.IsZero() {
+		return "never"
+	}
+	return syncTime.Local().Format(time.RFC3339)
 }
