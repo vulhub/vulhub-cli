@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
+
 	"github.com/vulhub/vulhub-cli/pkg/types"
 )
 
@@ -96,31 +98,51 @@ func (t *Table) FormatEnvironments(envs []types.Environment) string {
 // PrintEnvironmentStatuses prints a list of environment statuses
 func (t *Table) PrintEnvironmentStatuses(statuses []types.EnvironmentStatus) {
 	if len(statuses) == 0 {
-		fmt.Fprintln(t.writer, "No running environments.")
+		fmt.Fprintln(t.writer, "No downloaded environments.")
 		return
 	}
 
-	// Print header
-	fmt.Fprintf(t.writer, "%-35s  %-10s  %-30s\n", "PATH", "STATUS", "PORTS")
-	fmt.Fprintln(t.writer, strings.Repeat("-", 80))
+	const (
+		pathWidth   = 35
+		statusWidth = 14
+		portsWidth  = 40
+		gapWidth    = 2
+	)
+
+	header := lipgloss.JoinHorizontal(lipgloss.Top,
+		TableHeaderStyle.Width(pathWidth).PaddingRight(gapWidth).Render("PATH"),
+		TableHeaderStyle.Width(statusWidth).PaddingRight(gapWidth).Render("STATUS"),
+		TableHeaderStyle.Width(portsWidth).Render("PORTS"),
+	)
+	separatorWidth := pathWidth + statusWidth + portsWidth + (gapWidth * 2)
+	separator := TableBorderStyle.Render(strings.Repeat("─", separatorWidth))
+
+	pathStyle := PathStyle.Width(pathWidth).PaddingRight(gapWidth)
+	statusStyle := lipgloss.NewStyle().Width(statusWidth).PaddingRight(gapWidth)
+	portsStyle := PortStyle.Width(portsWidth)
+
+	fmt.Fprintln(t.writer, header)
+	fmt.Fprintln(t.writer, separator)
 
 	for _, status := range statuses {
-		statusStr := "stopped"
+		statusStr := StatusStoppedStyle.Render("○ stopped")
 		if status.Running {
-			statusStr = "running"
+			statusStr = StatusRunningStyle.Render("● running")
 		}
 
 		// Format ports
 		ports := formatPorts(status.Containers)
 
-		fmt.Fprintf(t.writer, "%-35s  %-10s  %-30s\n",
-			truncate(status.Environment.Path, 35),
-			statusStr,
-			truncate(ports, 30),
+		row := lipgloss.JoinHorizontal(lipgloss.Top,
+			pathStyle.Render(truncate(status.Environment.Path, pathWidth)),
+			statusStyle.Render(statusStr),
+			portsStyle.Render(truncate(ports, portsWidth)),
 		)
+		fmt.Fprintln(t.writer, row)
 	}
 
-	fmt.Fprintf(t.writer, "\nTotal: %d environments\n", len(statuses))
+	totalLine := MutedStyle.Render(fmt.Sprintf("Total: %d environments", len(statuses)))
+	fmt.Fprintf(t.writer, "\n%s\n", totalLine)
 }
 
 // PrintContainerStatuses prints detailed container statuses
@@ -130,19 +152,48 @@ func (t *Table) PrintContainerStatuses(containers []types.ContainerStatus) {
 		return
 	}
 
-	// Print header
-	fmt.Fprintf(t.writer, "%-25s  %-30s  %-10s  %-30s\n", "NAME", "IMAGE", "STATE", "PORTS")
-	fmt.Fprintln(t.writer, strings.Repeat("-", 100))
+	const (
+		nameWidth  = 25
+		imageWidth = 30
+		stateWidth = 10
+		portsWidth = 30
+		gapWidth   = 2
+	)
+
+	header := lipgloss.JoinHorizontal(lipgloss.Top,
+		TableHeaderStyle.Width(nameWidth).PaddingRight(gapWidth).Render("NAME"),
+		TableHeaderStyle.Width(imageWidth).PaddingRight(gapWidth).Render("IMAGE"),
+		TableHeaderStyle.Width(stateWidth).PaddingRight(gapWidth).Render("STATE"),
+		TableHeaderStyle.Width(portsWidth).Render("PORTS"),
+	)
+	separatorWidth := nameWidth + imageWidth + stateWidth + portsWidth + (gapWidth * 3)
+	separator := TableBorderStyle.Render(strings.Repeat("─", separatorWidth))
+
+	nameStyle := PathStyle.Width(nameWidth).PaddingRight(gapWidth)
+	imageStyle := lipgloss.NewStyle().Width(imageWidth).PaddingRight(gapWidth)
+	stateStyle := lipgloss.NewStyle().Width(stateWidth).PaddingRight(gapWidth)
+	portsStyle := PortStyle.Width(portsWidth)
+
+	fmt.Fprintln(t.writer, header)
+	fmt.Fprintln(t.writer, separator)
 
 	for _, c := range containers {
 		ports := formatContainerPorts(c.Ports)
+		stateText := c.State
+		switch strings.ToLower(c.State) {
+		case "running":
+			stateText = StatusRunningStyle.Render(c.State)
+		case "exited", "stopped":
+			stateText = StatusStoppedStyle.Render(c.State)
+		}
 
-		fmt.Fprintf(t.writer, "%-25s  %-30s  %-10s  %-30s\n",
-			truncate(c.Name, 25),
-			truncate(c.Image, 30),
-			c.State,
-			truncate(ports, 30),
+		row := lipgloss.JoinHorizontal(lipgloss.Top,
+			nameStyle.Render(truncate(c.Name, nameWidth)),
+			imageStyle.Render(truncate(c.Image, imageWidth)),
+			stateStyle.Render(stateText),
+			portsStyle.Render(truncate(ports, portsWidth)),
 		)
+		fmt.Fprintln(t.writer, row)
 	}
 }
 

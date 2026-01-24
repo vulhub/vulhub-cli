@@ -9,46 +9,6 @@ import (
 	"github.com/vulhub/vulhub-cli/internal/cli/ui"
 )
 
-// List creates the list command
-func (c *Commands) List() *cli.Command {
-	return &cli.Command{
-		Name:    "list",
-		Usage:   "List all downloaded vulnerability environments",
-		Aliases: []string{"ls"},
-		Action: func(ctx context.Context, cmd *cli.Command) error {
-			return c.runList(ctx)
-		},
-	}
-}
-
-func (c *Commands) runList(ctx context.Context) error {
-	table := ui.NewTable()
-
-	// Check if initialized, prompt to initialize if not
-	initialized, err := c.ensureInitialized(ctx)
-	if err != nil {
-		return err
-	}
-	if !initialized {
-		return nil
-	}
-
-	// Check if sync is needed
-	if _, err := c.checkAndPromptSync(ctx); err != nil {
-		return err
-	}
-
-	// Get all downloaded environments
-	statuses, err := c.Environment.ListDownloaded(ctx)
-	if err != nil {
-		return err
-	}
-
-	table.PrintEnvironmentStatuses(statuses)
-
-	return nil
-}
-
 // ListAvailable creates the list-available command
 func (c *Commands) ListAvailable() *cli.Command {
 	return &cli.Command{

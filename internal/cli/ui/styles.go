@@ -6,7 +6,7 @@ import "github.com/charmbracelet/lipgloss"
 const (
 	ColorSuccess = lipgloss.Color("42")  // Green
 	ColorWarning = lipgloss.Color("214") // Orange
-	ColorError   = lipgloss.Color("196") // Red
+	ColorError   = lipgloss.Color("167") // Red
 	ColorInfo    = lipgloss.Color("39")  // Blue
 	ColorMuted   = lipgloss.Color("245") // Gray
 	ColorAccent  = lipgloss.Color("205") // Pink
@@ -57,17 +57,44 @@ var (
 	URLStyle = lipgloss.NewStyle().
 			Foreground(ColorInfo).
 			Underline(true)
+
+	// TableHeaderStyle is for table headers
+	TableHeaderStyle = lipgloss.NewStyle().
+				Foreground(ColorMuted).
+				Bold(true)
+
+	// TableBorderStyle is for table separators
+	TableBorderStyle = lipgloss.NewStyle().
+				Foreground(ColorBorder)
+
+	// StatusRunningStyle is for running statuses
+	StatusRunningStyle = lipgloss.NewStyle().
+				Foreground(ColorSuccess).
+				Bold(true)
+
+	// StatusStoppedStyle is for stopped statuses
+	StatusStoppedStyle = lipgloss.NewStyle().
+				Foreground(ColorError).
+				Bold(true)
+
+	// PathStyle is for environment paths
+	PathStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("255"))
+
+	// PortStyle is for port lists
+	PortStyle = lipgloss.NewStyle().
+			Foreground(ColorMuted)
 )
 
 // Box styles
 var (
 	// BoxStyle is the base box style with rounded border
 	BoxStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(ColorBorder).
-			Padding(1, 2).
-			MarginTop(1).
-			MarginBottom(1)
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(ColorBorder).
+		Padding(1, 2).
+		MarginTop(1).
+		MarginBottom(1)
 )
 
 // BoxWithColor returns a box style with a specific border color

@@ -16,6 +16,7 @@ func (c *Commands) Clean() *cli.Command {
 		Name:      "clean",
 		Usage:     "Completely remove an environment (containers, volumes, and local files)",
 		ArgsUsage: "[keyword]",
+		Aliases:   []string{"rm", "down"},
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:    "yes",

@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/urfave/cli/v3"
 
@@ -14,6 +15,7 @@ import (
 func (c *Commands) Status() *cli.Command {
 	return &cli.Command{
 		Name:      "status",
+		Aliases:   []string{"ls", "list"},
 		Usage:     "Show status of vulnerability environments",
 		ArgsUsage: "[keyword]",
 		Action: func(ctx context.Context, cmd *cli.Command) error {
@@ -41,23 +43,14 @@ func (c *Commands) runStatus(ctx context.Context, keyword string) error {
 		return err
 	}
 
-	// If no keyword, show all running environments
+	// If no keyword, show all downloaded environments
 	if keyword == "" {
-		statuses, err := c.Environment.ListRunning(ctx)
+		statuses, err := c.Environment.ListDownloaded(ctx)
 		if err != nil {
 			return err
 		}
 
-		if len(statuses) == 0 {
-			fmt.Println("No running environments.")
-			return nil
-		}
-
-		for _, status := range statuses {
-			c.printEnvironmentStatus(table, &status)
-			fmt.Println()
-		}
-
+		table.PrintEnvironmentStatuses(statuses)
 		return nil
 	}
 
@@ -97,17 +90,21 @@ func (c *Commands) runStatus(ctx context.Context, keyword string) error {
 func (c *Commands) printEnvironmentStatus(table *ui.Table, status *types.EnvironmentStatus) {
 	env := status.Environment
 
-	fmt.Printf("Environment: %s\n", env.Path)
+	fmt.Printf("%s %s\n", ui.MutedStyle.Render("Environment:"), ui.PathStyle.Render(env.Path))
 	if len(env.CVE) > 0 {
-		fmt.Printf("CVE:         %s\n", env.CVE[0])
+		fmt.Printf("%s %s\n", ui.MutedStyle.Render("CVE:"), strings.Join(env.CVE, ", "))
 	}
-	fmt.Printf("Application: %s\n", env.App)
-	fmt.Printf("Downloaded:  %v\n", status.LocalPath != "")
+	fmt.Printf("%s %s\n", ui.MutedStyle.Render("Application:"), env.App)
+	if status.LocalPath != "" {
+		fmt.Printf("%s %s\n", ui.MutedStyle.Render("Downloaded:"), ui.SuccessStyle.Render("true"))
+	} else {
+		fmt.Printf("%s %s\n", ui.MutedStyle.Render("Downloaded:"), ui.MutedStyle.Render("false"))
+	}
 
 	if status.Running {
-		fmt.Println("Status:      running")
+		fmt.Printf("%s %s\n", ui.MutedStyle.Render("Status:"), ui.StatusRunningStyle.Render("running"))
 	} else {
-		fmt.Println("Status:      stopped")
+		fmt.Printf("%s %s\n", ui.MutedStyle.Render("Status:"), ui.StatusStoppedStyle.Render("stopped"))
 	}
 
 	if len(status.Containers) > 0 {
