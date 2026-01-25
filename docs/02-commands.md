@@ -261,41 +261,6 @@ vulhub clean -y log4j/CVE-2021-44228
 
 ---
 
-## list
-
-List all downloaded vulnerability environments.
-
-### Usage
-
-```bash
-vulhub list
-vulhub ls  # Alias
-```
-
-### Options
-
-None.
-
-### Behavior
-
-1. **Ensure initialization**: Checks if vulhub-cli is initialized
-2. **Scan environments directory**: Lists all environments in `~/.vulhub/environments/`
-3. **Check status**: For each environment, checks if containers are running
-4. **Display table**: Shows environment path, status, and container information
-
-### Example
-
-```bash
-vulhub list
-# Output:
-# Downloaded Environments:
-#   PATH                      STATUS    CONTAINERS
-#   log4j/CVE-2021-44228      running   1
-#   struts2/s2-045            stopped   0
-```
-
----
-
 ## list-available
 
 List all available vulnerability environments from the environment list.
@@ -333,6 +298,8 @@ Show the status of vulnerability environments.
 
 ```bash
 vulhub status [keyword]
+vulhub ls [keyword]    # Alias
+vulhub list [keyword]  # Alias
 ```
 
 ### Arguments
@@ -345,7 +312,7 @@ vulhub status [keyword]
 
 **Without keyword:**
 1. Scans all downloaded environments
-2. Shows only running environments with their container status
+2. Shows all environments with their status (running or stopped) and ports
 
 **With keyword:**
 1. Resolves the keyword to a specific environment
@@ -357,11 +324,14 @@ vulhub status [keyword]
 ### Example
 
 ```bash
-# Show all running environments
+# Show all downloaded environments
 vulhub status
 
 # Show specific environment status
 vulhub status log4j
+
+# Using alias
+vulhub ls
 ```
 
 ---

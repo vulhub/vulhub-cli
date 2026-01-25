@@ -72,10 +72,10 @@ type Manager interface {
 
 // EnvironmentManager implements the Manager interface
 type EnvironmentManager struct {
-	configMgr   config.Manager
+	configMgr     config.Manager
 	composeClient compose.Client
-	downloader  *github.Downloader
-	logger      *slog.Logger
+	downloader    *github.Downloader
+	logger        *slog.Logger
 }
 
 // NewEnvironmentManager creates a new EnvironmentManager
@@ -89,10 +89,10 @@ func NewEnvironmentManager(
 		logger = slog.Default()
 	}
 	return &EnvironmentManager{
-		configMgr:   configMgr,
+		configMgr:     configMgr,
 		composeClient: composeClient,
-		downloader:  downloader,
-		logger:      logger,
+		downloader:    downloader,
+		logger:        logger,
 	}
 }
 
@@ -192,10 +192,7 @@ func (m *EnvironmentManager) Status(ctx context.Context, env types.Environment) 
 	status := &types.EnvironmentStatus{
 		Environment: env,
 		LocalPath:   m.configMgr.Paths().EnvironmentDir(env.Path),
-	}
-
-	if !m.IsDownloaded(env) {
-		return status, nil
+		Running:     false,
 	}
 
 	containers, err := m.composeClient.Status(ctx, status.LocalPath)

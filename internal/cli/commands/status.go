@@ -27,7 +27,6 @@ func (c *Commands) Status() *cli.Command {
 
 func (c *Commands) runStatus(ctx context.Context, keyword string) error {
 	table := ui.NewTable()
-	selector := ui.NewSelector()
 
 	// Check if initialized, prompt to initialize if not
 	initialized, err := c.ensureInitialized(ctx)
@@ -49,31 +48,17 @@ func (c *Commands) runStatus(ctx context.Context, keyword string) error {
 		if err != nil {
 			return err
 		}
-
 		table.PrintEnvironmentStatuses(statuses)
 		return nil
 	}
 
-	// Resolve keyword
-	result, err := c.Resolver.Resolve(ctx, keyword)
+	// Resolve keyword within downloaded environments only
+	env, err := c.resolveEnvironment(ctx, keyword, ScopeDownloaded, false)
 	if err != nil {
 		return err
 	}
-
-	var env *types.Environment
-
-	if result.HasNoMatches() {
-		return errNoEnvironmentFound(keyword)
-	}
-
-	if result.HasMultipleMatches() {
-		envs := result.GetMatchedEnvironments()
-		env, err = selector.SelectEnvironment(envs, fmt.Sprintf("Multiple environments match '%s'. Please select one:", keyword))
-		if err != nil {
-			return err
-		}
-	} else {
-		env = result.Environment
+	if env == nil {
+		return nil // No environments found, message already printed
 	}
 
 	// Get status

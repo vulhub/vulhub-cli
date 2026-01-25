@@ -28,8 +28,13 @@ type ResolveResult struct {
 
 // Resolver defines the interface for keyword resolution
 type Resolver interface {
-	// Resolve resolves a keyword to one or more environments
+	// Resolve resolves a keyword to one or more environments from the full environment list
 	Resolve(ctx context.Context, keyword string) (*ResolveResult, error)
+
+	// ResolveFrom resolves a keyword from a given list of environments
+	// This is useful for commands like stop/restart/clean that should only search
+	// within downloaded or running environments
+	ResolveFrom(ctx context.Context, keyword string, envs []types.Environment) (*ResolveResult, error)
 
 	// IsCVEFormat checks if keyword is in CVE format
 	IsCVEFormat(keyword string) bool
@@ -52,7 +57,7 @@ func NewEnvironmentResolver(configMgr config.Manager) *EnvironmentResolver {
 	}
 }
 
-// Resolve resolves a keyword to one or more environments
+// Resolve resolves a keyword to one or more environments from the full environment list
 func (r *EnvironmentResolver) Resolve(ctx context.Context, keyword string) (*ResolveResult, error) {
 	// Load environment list
 	envList, err := r.configMgr.LoadEnvironments(ctx)
@@ -60,12 +65,22 @@ func (r *EnvironmentResolver) Resolve(ctx context.Context, keyword string) (*Res
 		return nil, fmt.Errorf("failed to load environments: %w", err)
 	}
 
+	return r.resolveFromEnvs(keyword, envList.Environment), nil
+}
+
+// ResolveFrom resolves a keyword from a given list of environments
+func (r *EnvironmentResolver) ResolveFrom(ctx context.Context, keyword string, envs []types.Environment) (*ResolveResult, error) {
+	return r.resolveFromEnvs(keyword, envs), nil
+}
+
+// resolveFromEnvs is the internal implementation for resolving keywords
+func (r *EnvironmentResolver) resolveFromEnvs(keyword string, envs []types.Environment) *ResolveResult {
 	result := &ResolveResult{
 		Keyword: keyword,
 	}
 
 	// First try exact match (CVE or path)
-	if exactEnv := r.matcher.FindExactMatch(keyword, envList.Environment); exactEnv != nil {
+	if exactEnv := r.matcher.FindExactMatch(keyword, envs); exactEnv != nil {
 		result.Environment = exactEnv
 		result.ExactMatch = true
 		if r.matcher.IsCVEFormat(keyword) {
@@ -73,28 +88,28 @@ func (r *EnvironmentResolver) Resolve(ctx context.Context, keyword string) (*Res
 		} else {
 			result.MatchType = MatchTypeExactPath
 		}
-		return result, nil
+		return result
 	}
 
 	// Find all matches
-	matches := r.matcher.FindMatches(keyword, envList.Environment)
+	matches := r.matcher.FindMatches(keyword, envs)
 
 	if len(matches) == 0 {
 		result.MatchType = MatchTypeNone
-		return result, nil
+		return result
 	}
 
 	if len(matches) == 1 {
 		result.Environment = &matches[0].Environment
 		result.MatchType = matches[0].Type
 		result.Matches = matches
-		return result, nil
+		return result
 	}
 
 	// Multiple matches
 	result.MatchType = matches[0].Type
 	result.Matches = matches
-	return result, nil
+	return result
 }
 
 // IsCVEFormat checks if keyword is in CVE format

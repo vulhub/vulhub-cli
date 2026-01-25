@@ -50,7 +50,7 @@ vulhub search log4j
 # Start an environment
 vulhub start CVE-2021-44228
 
-# Check running environments
+# Check environment status
 vulhub status
 
 # Stop an environment
@@ -70,11 +70,10 @@ vulhub clean CVE-2021-44228
 | `stop` | Stop a running environment |
 | `restart` | Restart an environment |
 | `clean` | Completely remove an environment |
-| `list` | List downloaded environments |
+| `status` | Show status of downloaded environments (aliases: `ls`, `list`) |
 | `list-available` | List all available environments |
 | `search` | Search for environments |
 | `info` | Show environment details |
-| `status` | Show running environment status |
 | `github-auth` | Authenticate with GitHub |
 
 For detailed command documentation, see the [docs](./docs/) directory.

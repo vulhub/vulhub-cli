@@ -7,7 +7,6 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/vulhub/vulhub-cli/internal/cli/ui"
-	"github.com/vulhub/vulhub-cli/pkg/types"
 )
 
 // Stop creates the stop command
@@ -36,7 +35,6 @@ func (c *Commands) Stop() *cli.Command {
 
 func (c *Commands) runStop(ctx context.Context, keyword string, skipConfirm bool) error {
 	table := ui.NewTable()
-	selector := ui.NewSelector()
 
 	// Check if initialized, prompt to initialize if not
 	initialized, err := c.ensureInitialized(ctx)
@@ -52,30 +50,13 @@ func (c *Commands) runStop(ctx context.Context, keyword string, skipConfirm bool
 		return err
 	}
 
-	// Resolve keyword
-	result, err := c.Resolver.Resolve(ctx, keyword)
+	// Resolve keyword within running environments only
+	env, err := c.resolveEnvironment(ctx, keyword, ScopeRunning, skipConfirm)
 	if err != nil {
 		return err
 	}
-
-	var env *types.Environment
-
-	if result.HasNoMatches() {
-		return errNoEnvironmentFound(keyword)
-	}
-
-	if result.HasMultipleMatches() {
-		if skipConfirm {
-			return errMultipleEnvironmentsFound(keyword)
-		}
-
-		envs := result.GetMatchedEnvironments()
-		env, err = selector.SelectEnvironment(envs, fmt.Sprintf("Multiple environments match '%s'. Please select one:", keyword))
-		if err != nil {
-			return err
-		}
-	} else {
-		env = result.Environment
+	if env == nil {
+		return nil // No environments found, message already printed
 	}
 
 	// Stop the environment

@@ -12,6 +12,7 @@ import (
 
 	"github.com/vulhub/vulhub-cli/internal/cli/ui"
 	"github.com/vulhub/vulhub-cli/internal/github"
+	"github.com/vulhub/vulhub-cli/internal/resolver"
 	"github.com/vulhub/vulhub-cli/pkg/types"
 )
 
@@ -277,6 +278,104 @@ func errNoEnvironmentFound(keyword string) error {
 // errMultipleEnvironmentsFound returns a formatted error for when multiple environments match
 func errMultipleEnvironmentsFound(keyword string) error {
 	return fmt.Errorf("multiple environments found matching '%s'. Please provide a more specific keyword", keyword)
+}
+
+// EnvironmentScope defines the scope for environment resolution
+type EnvironmentScope int
+
+const (
+	// ScopeAll searches in all available environments
+	ScopeAll EnvironmentScope = iota
+	// ScopeDownloaded searches only in downloaded environments
+	ScopeDownloaded
+	// ScopeRunning searches only in running environments
+	ScopeRunning
+)
+
+// getEnvironmentsByScope returns the list of environments based on the specified scope
+// Returns the environment list and an empty message if no environments found
+func (c *Commands) getEnvironmentsByScope(ctx context.Context, scope EnvironmentScope) ([]types.Environment, string, error) {
+	switch scope {
+	case ScopeRunning:
+		statuses, err := c.Environment.ListRunning(ctx)
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to get running environments: %w", err)
+		}
+		if len(statuses) == 0 {
+			return nil, "No running environments found", nil
+		}
+		return statusesToEnvironments(statuses), "", nil
+
+	case ScopeDownloaded:
+		statuses, err := c.Environment.ListDownloaded(ctx)
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to get downloaded environments: %w", err)
+		}
+		if len(statuses) == 0 {
+			return nil, "No downloaded environments found", nil
+		}
+		return statusesToEnvironments(statuses), "", nil
+
+	default: // ScopeAll
+		return nil, "", nil // Will use Resolve instead of ResolveFrom
+	}
+}
+
+// statusesToEnvironments extracts Environment from EnvironmentStatus slice
+func statusesToEnvironments(statuses []types.EnvironmentStatus) []types.Environment {
+	envs := make([]types.Environment, len(statuses))
+	for i, status := range statuses {
+		envs[i] = status.Environment
+	}
+	return envs
+}
+
+// resolveEnvironment resolves a keyword to a single environment based on the specified scope
+// It handles empty results, single matches, and multiple matches (with user selection)
+func (c *Commands) resolveEnvironment(ctx context.Context, keyword string, scope EnvironmentScope, skipConfirm bool) (*types.Environment, error) {
+	selector := ui.NewSelector()
+	table := ui.NewTable()
+
+	// Get environments based on scope
+	envs, emptyMsg, err := c.getEnvironmentsByScope(ctx, scope)
+	if err != nil {
+		return nil, err
+	}
+
+	// If no environments in scope, show message and return nil
+	if emptyMsg != "" {
+		table.PrintInfo(emptyMsg)
+		return nil, nil
+	}
+
+	// Resolve keyword
+	var result *resolver.ResolveResult
+	if scope == ScopeAll {
+		result, err = c.Resolver.Resolve(ctx, keyword)
+	} else {
+		result, err = c.Resolver.ResolveFrom(ctx, keyword, envs)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// Handle no matches
+	if result.HasNoMatches() {
+		return nil, errNoEnvironmentFound(keyword)
+	}
+
+	// Handle single match
+	if !result.HasMultipleMatches() {
+		return result.Environment, nil
+	}
+
+	// Handle multiple matches
+	if skipConfirm {
+		return nil, errMultipleEnvironmentsFound(keyword)
+	}
+
+	prompt := fmt.Sprintf("Multiple environments match '%s'. Please select one:", keyword)
+	return selector.SelectEnvironment(result.GetMatchedEnvironments(), prompt)
 }
 
 // refreshGitHubClient updates the GitHub client with the current token from config.

@@ -57,7 +57,7 @@ User configuration stored in `~/.vulhub/`:
 | `vulhub stop [keyword]` | Stop a running environment |
 | `vulhub restart [keyword]` | Restart an environment |
 | `vulhub clean [keyword]` | Completely remove an environment (containers, volumes, local files) |
-| `vulhub list` | List all downloaded environments |
+| `vulhub status [keyword]` | Show status of downloaded environments (aliases: `ls`, `list`) |
 | `vulhub list-available` | List all available environments |
 | `vulhub search [keyword]` | Search for environments |
 | `vulhub info [keyword]` | Show environment details |
