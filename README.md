@@ -44,6 +44,9 @@ Move-Item vulhub.exe C:\Windows\System32\
 # Initialize vulhub-cli (downloads environment list)
 vulhub init
 
+# Check system environment (Docker, network, etc.)
+vulhub doctor
+
 # Search for environments
 vulhub search log4j
 
@@ -75,6 +78,7 @@ vulhub clean CVE-2021-44228
 | `search` | Search for environments |
 | `info` | Show environment details |
 | `github-auth` | Authenticate with GitHub |
+| `doctor` | Check system environment and diagnose potential issues |
 
 For detailed command documentation, see the [docs](./docs/) directory.
 
@@ -117,6 +121,7 @@ Configuration is stored in `~/.vulhub/`:
 - [Configuration](./docs/03-configuration.md)
 - [GitHub Authentication](./docs/04-authentication.md)
 - [Architecture](./docs/05-architecture.md)
+- [Troubleshooting](./docs/06-troubleshooting.md)
 
 ## Contributing
 

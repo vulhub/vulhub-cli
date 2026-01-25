@@ -479,6 +479,124 @@ vulhub github-auth --remove
 
 ---
 
+## doctor
+
+Check system environment and diagnose potential issues.
+
+### Usage
+
+```bash
+vulhub doctor [options]
+```
+
+### Aliases
+
+`doc`
+
+### Options
+
+| Option | Description |
+|--------|-------------|
+| `--fix` | Attempt to fix issues automatically where possible |
+| `--verbose, -v` | Show detailed information for each check |
+
+### Behavior
+
+The doctor command performs comprehensive system diagnostics in four categories:
+
+1. **Docker Environment**
+   - Checks if Docker is installed and in PATH
+   - Verifies Docker daemon is running (`docker info`)
+   - Validates Docker Compose availability (`docker compose version`)
+
+2. **Configuration**
+   - Checks if config directory (`~/.vulhub/`) exists
+   - Validates `config.toml` syntax
+   - Validates `environments.toml` syntax and counts environments
+   - Checks environments directory status
+
+3. **Network Connectivity**
+   - Tests DNS resolution and HTTP connectivity to:
+     - GitHub API (`api.github.com`)
+     - GitHub Raw Content (`raw.githubusercontent.com`)
+     - Docker Hub (`hub.docker.com`)
+     - Docker Registry (`registry-1.docker.io`)
+     - Docker Auth (`auth.docker.io`)
+     - Docker CDN (`production.cloudflare.docker.com`)
+   - Reports response times and warns about slow connections (>5s)
+
+4. **Docker Registry**
+   - Shows configured registry mirrors
+   - Performs actual image pull test using `hello-world:latest`
+   - Warns if pull takes more than 30 seconds
+
+### Check Status Codes
+
+| Status | Meaning |
+|--------|---------|
+| `[OK]` | Check passed successfully |
+| `[WARN]` | Non-critical issue detected |
+| `[ERR]` | Critical issue that needs fixing |
+| `[SKIP]` | Check skipped due to missing prerequisite |
+
+### Example
+
+```bash
+# Basic check
+vulhub doctor
+
+# Detailed output
+vulhub doctor -v
+
+# Auto-fix issues (creates missing directories)
+vulhub doctor --fix
+```
+
+### Output Example
+
+```
+Vulhub Doctor - System Environment Check
+==================================================
+
+Docker Environment
+------------------------------
+  [OK] Docker Installation: Docker is installed
+  [OK] Docker Daemon: Docker daemon is running
+  [OK] Docker Compose: Docker Compose is available
+
+Configuration
+------------------------------
+  [OK] Config Directory: /home/user/.vulhub exists
+  [OK] Config File: config.toml is valid
+  [OK] Environments File: environments.toml is valid (180 environments)
+  [OK] Environments Directory: 3 environments downloaded
+
+Network Connectivity
+------------------------------
+  [OK] GitHub API: OK
+  [OK] GitHub Raw Content: OK
+  [OK] Docker Hub: OK
+  [OK] Docker Registry: OK
+  [OK] Docker Auth: OK
+  [OK] Docker CDN: OK
+
+Docker Registry
+------------------------------
+  [OK] Registry Mirrors: No mirrors configured (using Docker Hub directly)
+  [OK] Docker Pull Test: Successfully pulled test image
+
+==================================================
+Summary
+------------------------------
+  [OK] 14 passed
+
+✓ All critical checks passed! Vulhub is ready to use.
+```
+
+For detailed troubleshooting solutions, see the [Troubleshooting Guide](06-troubleshooting.md).
+
+---
+
 ## Keyword Resolution
 
 Many commands accept a `<keyword>` argument. The resolution process works as follows:

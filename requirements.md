@@ -90,6 +90,7 @@ The following files SHALL be created in `~/.vulhub/` directory:
 | `vulhub search [keyword]` | Search for vulnerability environments |
 | `vulhub info [keyword]` | Display detailed information about a vulnerability environment |
 | `vulhub github-auth` | Authenticate with GitHub using OAuth Device Flow |
+| `vulhub doctor` | Check system environment and diagnose potential issues |
 
 #### Acceptance Criteria
 
@@ -322,6 +323,31 @@ type GitHubClient interface {
    d. Poll for access token while user completes authorization
    e. Save access token to configuration file
 4. Display success message with rate limit information
+
+#### Subcommand: `doctor`
+
+1. Check Docker environment:
+   - Verify Docker is installed and in PATH
+   - Verify Docker daemon is running (`docker info`)
+   - Verify Docker Compose is available (`docker compose version`)
+2. Check configuration:
+   - Verify config directory exists (`~/.vulhub/`)
+   - Validate `config.toml` syntax
+   - Validate `environments.toml` syntax
+   - Check environments directory status
+3. Check network connectivity:
+   - Test DNS resolution and HTTP connectivity to GitHub API (`api.github.com`)
+   - Test connectivity to GitHub Raw Content (`raw.githubusercontent.com`)
+   - Test connectivity to Docker Hub (`hub.docker.com`)
+   - Test connectivity to Docker Registry (`registry-1.docker.io`)
+   - Test connectivity to Docker Auth (`auth.docker.io`)
+   - Test connectivity to Docker CDN (`production.cloudflare.docker.com`)
+4. Check Docker registry:
+   - Display configured registry mirrors
+   - Perform actual image pull test using `hello-world:latest`
+5. Display summary with pass/warning/error counts
+6. If `--fix` flag is provided, attempt to fix issues automatically (e.g., create missing directories)
+7. If `--verbose` flag is provided, display detailed timing and path information
 
 #### Acceptance Criteria
 

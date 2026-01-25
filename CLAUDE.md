@@ -62,6 +62,7 @@ User configuration stored in `~/.vulhub/`:
 | `vulhub search [keyword]` | Search for environments |
 | `vulhub info [keyword]` | Show environment details |
 | `vulhub github-auth` | Authenticate with GitHub using OAuth Device Flow |
+| `vulhub doctor` | Check system environment and diagnose potential issues |
 
 Keywords support: exact CVE numbers (`CVE-2021-44228`), exact paths (`log4j/CVE-2021-44228`), or fuzzy matching (`log4j`).
 

@@ -51,5 +51,6 @@ func (c *Commands) All() []*cli.Command {
 		c.Search(),
 		c.Info(),
 		c.GitHubAuth(),
+		c.Doctor(),
 	}
 }
