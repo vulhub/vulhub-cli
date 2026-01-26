@@ -14,7 +14,6 @@ vulhub doctor
 
 | Option | Description |
 |--------|-------------|
-| `--fix` | Attempt to fix issues automatically where possible |
 | `--verbose, -v` | Show detailed information for each check |
 
 ### Example Output

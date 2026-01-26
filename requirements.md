@@ -346,8 +346,7 @@ type GitHubClient interface {
    - Display configured registry mirrors
    - Perform actual image pull test using `hello-world:latest`
 5. Display summary with pass/warning/error counts
-6. If `--fix` flag is provided, attempt to fix issues automatically (e.g., create missing directories)
-7. If `--verbose` flag is provided, display detailed timing and path information
+6. If `--verbose` flag is provided, display detailed timing and path information
 
 #### Acceptance Criteria
 

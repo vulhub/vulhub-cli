@@ -497,7 +497,6 @@ vulhub doctor [options]
 
 | Option | Description |
 |--------|-------------|
-| `--fix` | Attempt to fix issues automatically where possible |
 | `--verbose, -v` | Show detailed information for each check |
 
 ### Behavior
@@ -547,9 +546,6 @@ vulhub doctor
 
 # Detailed output
 vulhub doctor -v
-
-# Auto-fix issues (creates missing directories)
-vulhub doctor --fix
 ```
 
 ### Output Example

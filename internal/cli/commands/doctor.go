@@ -45,22 +45,18 @@ func (c *Commands) Doctor() *cli.Command {
 		Aliases: []string{"doc"},
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
-				Name:  "fix",
-				Usage: "Attempt to fix issues automatically where possible",
-			},
-			&cli.BoolFlag{
 				Name:    "verbose",
 				Aliases: []string{"v"},
 				Usage:   "Show detailed information for each check",
 			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			return c.runDoctor(ctx, cmd.Bool("fix"), cmd.Bool("verbose"))
+			return c.runDoctor(ctx, cmd.Bool("verbose"))
 		},
 	}
 }
 
-func (c *Commands) runDoctor(ctx context.Context, autoFix bool, verbose bool) error {
+func (c *Commands) runDoctor(ctx context.Context, verbose bool) error {
 	table := ui.NewTable()
 
 	fmt.Println("Vulhub Doctor - System Environment Check")
@@ -84,7 +80,7 @@ func (c *Commands) runDoctor(ctx context.Context, autoFix bool, verbose bool) er
 	fmt.Println("Configuration")
 	fmt.Println(strings.Repeat("-", 30))
 
-	configResults := c.checkConfiguration(ctx, autoFix, verbose)
+	configResults := c.checkConfiguration(ctx, verbose)
 	results = append(results, configResults...)
 	c.printCheckResults(configResults)
 	fmt.Println()
@@ -290,35 +286,19 @@ func (c *Commands) checkDocker(ctx context.Context, verbose bool) []checkResult 
 }
 
 // checkConfiguration checks vulhub configuration files
-func (c *Commands) checkConfiguration(ctx context.Context, autoFix bool, verbose bool) []checkResult {
+func (c *Commands) checkConfiguration(ctx context.Context, verbose bool) []checkResult {
 	var results []checkResult
 	paths := c.Config.Paths()
 
 	// Check config directory
 	configDir := paths.ConfigDir()
 	if _, err := os.Stat(configDir); os.IsNotExist(err) {
-		if autoFix {
-			if err := paths.EnsureConfigDir(); err != nil {
-				results = append(results, checkResult{
-					Name:    "Config Directory",
-					Status:  statusError,
-					Message: fmt.Sprintf("Failed to create %s: %v", configDir, err),
-				})
-			} else {
-				results = append(results, checkResult{
-					Name:    "Config Directory",
-					Status:  statusOK,
-					Message: fmt.Sprintf("Created %s", configDir),
-				})
-			}
-		} else {
-			results = append(results, checkResult{
-				Name:    "Config Directory",
-				Status:  statusWarning,
-				Message: fmt.Sprintf("%s does not exist", configDir),
-				Hint:    "Run 'vulhub init' to initialize, or use --fix flag",
-			})
-		}
+		results = append(results, checkResult{
+			Name:    "Config Directory",
+			Status:  statusWarning,
+			Message: fmt.Sprintf("%s does not exist", configDir),
+			Hint:    "Run 'vulhub init' to initialize",
+		})
 	} else {
 		results = append(results, checkResult{
 			Name:    "Config Directory",
