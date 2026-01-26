@@ -10,8 +10,52 @@ These options are available for all commands:
 |--------|-------------|
 | `--verbose` | Enable verbose/debug output |
 | `--config <path>` | Specify a custom configuration file path |
+| `--proxy <url>` | Proxy server URL for network requests (supports HTTP and SOCKS5) |
 | `--help, -h` | Show help information |
 | `--version, -v` | Show version information |
+
+### Proxy Configuration
+
+The `--proxy` option allows you to route all CLI network requests through a proxy server. This is useful when you need to access GitHub or other services through a proxy.
+
+**Supported proxy types:**
+- HTTP proxy: `http://host:port` or `https://host:port`
+- SOCKS5 proxy: `socks5://host:port`
+
+**Configuration priority (highest to lowest):**
+1. `--proxy` command-line flag
+2. `VULHUB_PROXY` environment variable
+3. `HTTPS_PROXY` / `HTTP_PROXY` environment variables
+4. `proxy` setting in `~/.vulhub/config.toml`
+
+**Examples:**
+
+Using command-line flag:
+```bash
+# HTTP proxy
+vulhub --proxy http://127.0.0.1:8080 syncup
+
+# SOCKS5 proxy
+vulhub --proxy socks5://127.0.0.1:1080 start log4j
+
+# Proxy with authentication
+vulhub --proxy http://user:password@proxy.example.com:8080 init
+```
+
+Using environment variable:
+```bash
+export VULHUB_PROXY=http://127.0.0.1:8080
+vulhub syncup
+```
+
+Using config file (`~/.vulhub/config.toml`):
+```toml
+[network]
+proxy = "http://127.0.0.1:8080"
+timeout = 60  # HTTP timeout in seconds (default: 30)
+```
+
+**Note:** The proxy configuration only affects vulhub-cli's own network requests (GitHub API, downloading environment files, network connectivity checks, etc.). It does **not** affect Docker image pulls, as Docker uses its own proxy configuration. To configure Docker proxy, please refer to the [Docker documentation](https://docs.docker.com/config/daemon/systemd/#httphttps-proxy).
 
 ---
 

@@ -6,6 +6,7 @@ import (
 	"github.com/vulhub/vulhub-cli/internal/config"
 	"github.com/vulhub/vulhub-cli/internal/environment"
 	"github.com/vulhub/vulhub-cli/internal/github"
+	"github.com/vulhub/vulhub-cli/internal/httpclient"
 	"github.com/vulhub/vulhub-cli/internal/resolver"
 )
 
@@ -18,6 +19,7 @@ type Commands struct {
 	Resolver     resolver.Resolver
 	Downloader   *github.Downloader
 	GitHubClient *github.GitHubClient
+	HTTPClient   *httpclient.Client
 }
 
 // New creates a new Commands instance with all dependencies injected via fx.
@@ -27,6 +29,7 @@ func New(
 	res resolver.Resolver,
 	downloader *github.Downloader,
 	ghClient *github.GitHubClient,
+	httpClient *httpclient.Client,
 ) *Commands {
 	return &Commands{
 		Config:       cfgMgr,
@@ -34,6 +37,7 @@ func New(
 		Resolver:     res,
 		Downloader:   downloader,
 		GitHubClient: ghClient,
+		HTTPClient:   httpClient,
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
 
@@ -32,50 +33,23 @@ type Client interface {
 
 // GitHubClient implements the Client interface using go-github
 type GitHubClient struct {
-	client *gh.Client
-	logger *slog.Logger
-}
-
-// ClientConfig holds configuration for the GitHub client
-type ClientConfig struct {
-	Token  string
-	Logger *slog.Logger
-}
-
-// NewClient creates a new GitHub client
-func NewClient(cfg ClientConfig) *GitHubClient {
-	logger := cfg.Logger
-	if logger == nil {
-		logger = slog.Default()
-	}
-
-	// Create GitHub API client
-	var client *gh.Client
-	if cfg.Token != "" {
-		client = gh.NewClient(nil).WithAuthToken(cfg.Token)
-	} else {
-		client = gh.NewClient(nil)
-	}
-
-	return &GitHubClient{
-		client: client,
-		logger: logger,
-	}
+	client     *gh.Client
+	httpClient *http.Client
 }
 
 // SetToken updates the client's authentication token dynamically.
 // This allows refreshing the client after OAuth authentication without recreating the client.
 func (c *GitHubClient) SetToken(token string) {
 	if token != "" {
-		c.client = gh.NewClient(nil).WithAuthToken(token)
+		c.client = gh.NewClient(c.httpClient).WithAuthToken(token)
 	} else {
-		c.client = gh.NewClient(nil)
+		c.client = gh.NewClient(c.httpClient)
 	}
 }
 
 // DownloadFile downloads a single file from a repository
 func (c *GitHubClient) DownloadFile(ctx context.Context, owner, repo, path, ref string) ([]byte, error) {
-	c.logger.Debug("downloading file", "owner", owner, "repo", repo, "path", path, "ref", ref)
+	slog.Debug("downloading file", "owner", owner, "repo", repo, "path", path, "ref", ref)
 
 	opts := &gh.RepositoryContentGetOptions{Ref: ref}
 
@@ -100,7 +74,7 @@ func (c *GitHubClient) DownloadFile(ctx context.Context, owner, repo, path, ref 
 
 // DownloadDirectory downloads all files in a directory from a repository
 func (c *GitHubClient) DownloadDirectory(ctx context.Context, owner, repo, path, ref, destDir string) error {
-	c.logger.Debug("downloading directory", "path", path, "dest", destDir)
+	slog.Debug("downloading directory", "path", path, "dest", destDir)
 
 	contents, err := c.ListDirectoryContents(ctx, owner, repo, path, ref)
 	if err != nil {
@@ -136,7 +110,7 @@ func (c *GitHubClient) DownloadDirectory(ctx context.Context, owner, repo, path,
 				return fmt.Errorf("failed to write file %s: %w", destPath, err)
 			}
 
-			c.logger.Debug("downloaded file", "path", entryPath, "dest", destPath)
+			slog.Debug("downloaded file", "path", entryPath, "dest", destPath)
 		}
 	}
 

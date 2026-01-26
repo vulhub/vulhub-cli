@@ -44,6 +44,11 @@ token = ""  # GitHub access token (set by github-auth)
 [sync]
 last_sync = "2024-01-15T10:30:00Z"
 auto_sync_days = 7  # Prompt to sync after this many days
+
+# Network settings
+[network]
+proxy = ""   # Proxy server URL (e.g., "http://127.0.0.1:8080" or "socks5://127.0.0.1:1080")
+timeout = 30  # HTTP request timeout in seconds
 ```
 
 ### Configuration Options
@@ -64,6 +69,18 @@ auto_sync_days = 7  # Prompt to sync after this many days
 | `last_sync` | datetime | - | Timestamp of last sync |
 | `auto_sync_days` | integer | `7` | Days before prompting to sync |
 
+#### [network] Section
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `proxy` | string | `""` | Proxy server URL (HTTP or SOCKS5) |
+| `timeout` | integer | `30` | HTTP request timeout in seconds |
+
+**Supported proxy formats:**
+- HTTP proxy: `http://host:port` or `https://host:port`
+- SOCKS5 proxy: `socks5://host:port`
+- With authentication: `http://user:password@host:port`
+
 ## Environment Variables
 
 Environment variables take precedence over configuration file settings:
@@ -71,13 +88,33 @@ Environment variables take precedence over configuration file settings:
 | Variable | Description |
 |----------|-------------|
 | `GITHUB_TOKEN` | GitHub access token (overrides config.toml) |
+| `VULHUB_PROXY` | Proxy server URL (highest priority for proxy) |
+| `HTTPS_PROXY` | HTTPS proxy URL (standard environment variable) |
+| `HTTP_PROXY` | HTTP proxy URL (standard environment variable) |
 
-### Example
+### Proxy Priority
+
+When multiple proxy sources are configured, the priority order is:
+1. `--proxy` command-line flag (highest)
+2. `VULHUB_PROXY` environment variable
+3. `HTTPS_PROXY` environment variable
+4. `HTTP_PROXY` environment variable
+5. `proxy` setting in config.toml (lowest)
+
+### Examples
 
 ```bash
 # Use a specific GitHub token
 export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
 vulhub start log4j
+
+# Use proxy via environment variable
+export VULHUB_PROXY=http://127.0.0.1:8080
+vulhub syncup
+
+# Or use standard proxy environment variables
+export HTTPS_PROXY=http://127.0.0.1:8080
+vulhub syncup
 ```
 
 ## Environments List (environments.toml)

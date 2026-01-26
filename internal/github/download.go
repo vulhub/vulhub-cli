@@ -17,16 +17,6 @@ type Downloader struct {
 	branch string
 }
 
-// NewDownloader creates a new Downloader
-func NewDownloader(client Client, owner, repo, branch string) *Downloader {
-	return &Downloader{
-		client: client,
-		owner:  owner,
-		repo:   repo,
-		branch: branch,
-	}
-}
-
 // DownloadEnvironmentsList downloads the environments.toml file
 func (d *Downloader) DownloadEnvironmentsList(ctx context.Context) ([]byte, error) {
 	return d.client.DownloadFile(ctx, d.owner, d.repo, "environments.toml", d.branch)

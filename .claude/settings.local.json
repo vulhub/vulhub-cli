@@ -18,7 +18,8 @@
       "Bash(docker info:*)",
       "Bash(echo:*)",
       "Bash(./vulhub.exe:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(go doc:*)"
     ]
   }
 }

@@ -18,6 +18,19 @@ type Config struct {
 
 	// Sync contains sync-related configuration
 	Sync SyncConfig `toml:"sync"`
+
+	// Network contains network-related configuration
+	Network NetworkConfig `toml:"network"`
+}
+
+// NetworkConfig contains network-related configuration
+type NetworkConfig struct {
+	// Proxy is the proxy server URL (e.g., "http://127.0.0.1:8080" or "socks5://127.0.0.1:1080")
+	// Can be overridden by VULHUB_PROXY or HTTP_PROXY/HTTPS_PROXY environment variables
+	Proxy string `toml:"proxy,omitempty"`
+
+	// Timeout is the default timeout for HTTP requests in seconds (default: 30)
+	Timeout int `toml:"timeout,omitempty"`
 }
 
 // SyncConfig contains sync-related configuration

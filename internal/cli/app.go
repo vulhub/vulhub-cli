@@ -10,6 +10,7 @@ import (
 	"github.com/vulhub/vulhub-cli/internal/config"
 	"github.com/vulhub/vulhub-cli/internal/environment"
 	"github.com/vulhub/vulhub-cli/internal/github"
+	"github.com/vulhub/vulhub-cli/internal/httpclient"
 	"github.com/vulhub/vulhub-cli/internal/resolver"
 )
 
@@ -30,9 +31,10 @@ func NewApp(
 	res resolver.Resolver,
 	downloader *github.Downloader,
 	ghClient *github.GitHubClient,
+	httpClient *httpclient.Client,
 ) *cli.Command {
 	// Create commands instance with all dependencies
-	cmds := commands.New(cfgMgr, envMgr, res, downloader, ghClient)
+	cmds := commands.New(cfgMgr, envMgr, res, downloader, ghClient, httpClient)
 
 	cli.VersionPrinter = func(cmd *cli.Command) {
 		fmt.Fprintf(cmd.Root().Writer,
@@ -54,6 +56,25 @@ func NewApp(
 				Name:  "config",
 				Usage: "Path to configuration file",
 			},
+			&cli.StringFlag{
+				Name:  "proxy",
+				Usage: "Proxy server URL (e.g., http://127.0.0.1:8080 or socks5://127.0.0.1:1080)",
+			},
+		},
+		Before: func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
+			// Configure proxy if specified via CLI flag (highest priority)
+			proxyURL := cmd.String("proxy")
+			if proxyURL != "" {
+				// Validate and set proxy URL
+				if err := httpclient.ValidateProxyURL(proxyURL); err != nil {
+					return ctx, err
+				}
+
+				if err := httpClient.SetProxyURL(proxyURL); err != nil {
+					return ctx, fmt.Errorf("failed to configure proxy: %w", err)
+				}
+			}
+			return ctx, nil
 		},
 		Commands: cmds.All(),
 	}

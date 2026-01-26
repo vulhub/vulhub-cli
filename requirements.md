@@ -106,6 +106,7 @@ The following files SHALL be created in `~/.vulhub/` directory:
 - `--version, -v` - Display version information
 - `--verbose` - Enable verbose output
 - `--config <path>` - Specify custom configuration file path
+- `--proxy <url>` - Proxy server URL (HTTP or SOCKS5) for CLI network requests
 
 ---
 

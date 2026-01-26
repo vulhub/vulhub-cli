@@ -256,19 +256,27 @@ The doctor command checks connectivity to these critical services:
 
 **Solutions**:
 
-1. **Use a proxy** (for regions with restricted access):
+1. **Configure proxy for vulhub-cli:**
 
-   **Windows (PowerShell)**:
-   ```powershell
-   $env:HTTP_PROXY = "http://your-proxy:port"
-   $env:HTTPS_PROXY = "http://your-proxy:port"
-   ```
-
-   **Linux/macOS**:
+   Using `--proxy` flag:
    ```bash
-   export HTTP_PROXY=http://your-proxy:port
-   export HTTPS_PROXY=http://your-proxy:port
+   vulhub --proxy http://127.0.0.1:8080 syncup
+   vulhub --proxy socks5://127.0.0.1:1080 start log4j
    ```
+
+   Using environment variable:
+   ```bash
+   export VULHUB_PROXY=http://127.0.0.1:8080
+   vulhub syncup
+   ```
+
+   Using config file (`~/.vulhub/config.toml`):
+   ```toml
+   [network]
+   proxy = "http://127.0.0.1:8080"
+   ```
+
+   Note: This only affects vulhub-cli's network requests. Docker image pulls require separate proxy configuration (see [Docker Registry Issues](#docker-registry-issues)).
 
 2. **Use a VPN** if services are blocked in your region
 

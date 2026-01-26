@@ -15,6 +15,7 @@ import (
 	"github.com/vulhub/vulhub-cli/internal/config"
 	"github.com/vulhub/vulhub-cli/internal/environment"
 	"github.com/vulhub/vulhub-cli/internal/github"
+	"github.com/vulhub/vulhub-cli/internal/httpclient"
 	"github.com/vulhub/vulhub-cli/internal/resolver"
 )
 
@@ -63,6 +64,7 @@ func run(ctx context.Context) error {
 
 		// Load modules
 		config.Module,
+		httpclient.Module,
 		github.Module,
 		compose.Module,
 		resolver.Module,

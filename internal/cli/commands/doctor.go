@@ -456,10 +456,7 @@ func (c *Commands) checkNetworkConnectivity(ctx context.Context, verbose bool) [
 		},
 	}
 
-	client := &http.Client{
-		Timeout: 15 * time.Second,
-	}
-
+	// Use the configured HTTP client (with proxy if set)
 	for _, ep := range endpoints {
 		// First check DNS resolution
 		start := time.Now()
@@ -483,7 +480,7 @@ func (c *Commands) checkNetworkConnectivity(ctx context.Context, verbose bool) [
 		// Then check HTTP connectivity
 		start = time.Now()
 		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, ep.url, nil)
-		resp, err := client.Do(req)
+		resp, err := c.HTTPClient.Do(req)
 		httpTime := time.Since(start)
 
 		if err != nil {
