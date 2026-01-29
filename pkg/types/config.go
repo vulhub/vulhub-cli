@@ -21,6 +21,18 @@ type Config struct {
 
 	// Network contains network-related configuration
 	Network NetworkConfig `toml:"network"`
+
+	// Web contains web API server configuration
+	Web WebConfig `toml:"web"`
+}
+
+// WebConfig contains web API server configuration
+type WebConfig struct {
+	// Host is the address to bind to (default: "0.0.0.0")
+	Host string `toml:"host,omitempty"`
+
+	// Port is the port number to listen on (default: 8080)
+	Port int `toml:"port,omitempty"`
 }
 
 // NetworkConfig contains network-related configuration
@@ -91,6 +103,10 @@ func DefaultConfig() Config {
 		},
 		Sync: SyncConfig{
 			AutoSyncDays: 7,
+		},
+		Web: WebConfig{
+			Host: "0.0.0.0",
+			Port: 8080,
 		},
 	}
 }

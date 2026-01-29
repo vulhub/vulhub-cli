@@ -7,11 +7,7 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/vulhub/vulhub-cli/internal/cli/commands"
-	"github.com/vulhub/vulhub-cli/internal/config"
-	"github.com/vulhub/vulhub-cli/internal/environment"
-	"github.com/vulhub/vulhub-cli/internal/github"
 	"github.com/vulhub/vulhub-cli/internal/httpclient"
-	"github.com/vulhub/vulhub-cli/internal/resolver"
 )
 
 // Command is an alias for cli.Command
@@ -26,16 +22,9 @@ var (
 
 // NewApp creates a new CLI application with all dependencies injected via fx
 func NewApp(
-	cfgMgr config.Manager,
-	envMgr environment.Manager,
-	res resolver.Resolver,
-	downloader *github.Downloader,
-	ghClient *github.GitHubClient,
+	cmds *commands.Commands,
 	httpClient *httpclient.Client,
 ) *cli.Command {
-	// Create commands instance with all dependencies
-	cmds := commands.New(cfgMgr, envMgr, res, downloader, ghClient, httpClient)
-
 	cli.VersionPrinter = func(cmd *cli.Command) {
 		fmt.Fprintf(cmd.Root().Writer,
 			"Vulhub CLI\n  Version:    %s\n  Commit:     %s\n  Build Time: %s\n",

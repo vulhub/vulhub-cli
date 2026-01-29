@@ -1,9 +1,6 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git -C \"D:\\\\pro\\\\vulhub-cli\" status)",
-      "Bash(git -C \"D:\\\\pro\\\\vulhub-cli\" log --all --format=\"%H %s\")",
-      "Bash(git -C \"D:\\\\pro\\\\vulhub-cli\" remote -v)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:uber-go.github.io)",
@@ -19,7 +16,10 @@
       "Bash(echo:*)",
       "Bash(./vulhub.exe:*)",
       "Bash(ls:*)",
-      "Bash(go doc:*)"
+      "Bash(go doc:*)",
+      "Bash(npm install)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run build:*)"
     ]
   }
 }

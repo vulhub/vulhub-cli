@@ -3,6 +3,7 @@ package commands
 import (
 	"github.com/urfave/cli/v3"
 
+	"github.com/vulhub/vulhub-cli/internal/api"
 	"github.com/vulhub/vulhub-cli/internal/config"
 	"github.com/vulhub/vulhub-cli/internal/environment"
 	"github.com/vulhub/vulhub-cli/internal/github"
@@ -20,6 +21,7 @@ type Commands struct {
 	Downloader   *github.Downloader
 	GitHubClient *github.GitHubClient
 	HTTPClient   *httpclient.Client
+	WebHandlers  *api.Handlers
 }
 
 // New creates a new Commands instance with all dependencies injected via fx.
@@ -30,6 +32,7 @@ func New(
 	downloader *github.Downloader,
 	ghClient *github.GitHubClient,
 	httpClient *httpclient.Client,
+	webHandlers *api.Handlers,
 ) *Commands {
 	return &Commands{
 		Config:       cfgMgr,
@@ -38,6 +41,7 @@ func New(
 		Downloader:   downloader,
 		GitHubClient: ghClient,
 		HTTPClient:   httpClient,
+		WebHandlers:  webHandlers,
 	}
 }
 
@@ -56,5 +60,6 @@ func (c *Commands) All() []*cli.Command {
 		c.Info(),
 		c.GitHubAuth(),
 		c.Doctor(),
+		c.Serve(),
 	}
 }

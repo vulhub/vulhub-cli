@@ -10,7 +10,9 @@ import (
 
 	"go.uber.org/fx"
 
+	"github.com/vulhub/vulhub-cli/internal/api"
 	"github.com/vulhub/vulhub-cli/internal/cli"
+	"github.com/vulhub/vulhub-cli/internal/cli/commands"
 	"github.com/vulhub/vulhub-cli/internal/compose"
 	"github.com/vulhub/vulhub-cli/internal/config"
 	"github.com/vulhub/vulhub-cli/internal/environment"
@@ -69,7 +71,8 @@ func run(ctx context.Context) error {
 		compose.Module,
 		resolver.Module,
 		environment.Module,
-
+		api.Module,
+		fx.Provide(commands.New),
 		// Provide CLI app (fx automatically injects all dependencies)
 		fx.Provide(cli.NewApp),
 
