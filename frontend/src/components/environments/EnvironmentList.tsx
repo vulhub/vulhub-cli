@@ -15,18 +15,24 @@ export function EnvironmentList({
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-40" />
+          <div
+            key={i}
+            className="rounded-lg border border-border/50 bg-card/50 p-4"
+          >
+            <Skeleton className="mb-3 h-5 w-3/4 bg-muted/50" />
+            <Skeleton className="mb-4 h-3 w-1/2 bg-muted/50" />
+            <div className="flex gap-2">
+              <Skeleton className="h-5 w-20 bg-muted/50" />
+              <Skeleton className="h-5 w-16 bg-muted/50" />
+            </div>
+          </div>
         ))}
       </div>
     )
   }
 
   if (environments.length === 0) {
-    return (
-      <div className="flex h-40 items-center justify-center rounded-lg border border-dashed">
-        <p className="text-muted-foreground">No environments found</p>
-      </div>
-    )
+    return null
   }
 
   return (

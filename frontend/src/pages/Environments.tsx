@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Play, Download, Package } from 'lucide-react'
+import { Play, Download, Package, Bug, Search } from 'lucide-react'
 import { SearchInput } from '@/components/common/SearchInput'
 import { EnvironmentList } from '@/components/environments/EnvironmentList'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -59,85 +59,152 @@ export function Environments() {
   }, [data?.environments, filter, search])
 
   return (
-    <div className="p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Environments</h1>
-        <p className="text-muted-foreground">
-          Browse and manage vulnerability environments
-        </p>
-      </div>
+    <div className="relative min-h-full p-6">
+      {/* Background grid */}
+      <div className="cyber-grid pointer-events-none absolute inset-0 opacity-30" />
 
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="w-full max-w-sm">
-          <SearchInput
-            value={search}
-            onChange={setSearch}
-            placeholder="Search by CVE, name, app, or tag..."
-          />
-        </div>
-        <Tabs
-          value={filter}
-          onValueChange={(v) => setFilter(v as FilterType)}
-        >
-          <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="downloaded">Downloaded</TabsTrigger>
-            <TabsTrigger value="running">Running</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
-
-      <div className="mb-4">
-        <p className="text-sm text-muted-foreground">
-          Showing {totalFiltered} of {data?.total ?? 0} environments
-        </p>
-      </div>
-
-      <div className="space-y-8">
-        {grouped.running.length > 0 && (
-          <section>
-            <div className="mb-4 flex items-center gap-2">
-              <Play className="h-5 w-5 text-green-500" />
-              <h2 className="text-lg font-semibold">Running</h2>
-              <span className="text-sm text-muted-foreground">
-                ({grouped.running.length})
-              </span>
+      <div className="relative">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="mb-2 flex items-center gap-3">
+            <div className="rounded-lg bg-primary/15 p-2">
+              <Bug className="h-6 w-6 text-primary" />
             </div>
-            <EnvironmentList environments={grouped.running} isLoading={isLoading} />
-          </section>
-        )}
-
-        {grouped.downloaded.length > 0 && (
-          <section>
-            <div className="mb-4 flex items-center gap-2">
-              <Download className="h-5 w-5 text-blue-500" />
-              <h2 className="text-lg font-semibold">Downloaded</h2>
-              <span className="text-sm text-muted-foreground">
-                ({grouped.downloaded.length})
-              </span>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                Environments
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Browse and deploy vulnerability labs
+              </p>
             </div>
-            <EnvironmentList environments={grouped.downloaded} isLoading={isLoading} />
-          </section>
-        )}
-
-        {grouped.available.length > 0 && (
-          <section>
-            <div className="mb-4 flex items-center gap-2">
-              <Package className="h-5 w-5 text-muted-foreground" />
-              <h2 className="text-lg font-semibold">Available</h2>
-              <span className="text-sm text-muted-foreground">
-                ({grouped.available.length})
-              </span>
-            </div>
-            <EnvironmentList environments={grouped.available} isLoading={isLoading} />
-          </section>
-        )}
-
-        {!isLoading && totalFiltered === 0 && (
-          <div className="flex h-40 items-center justify-center rounded-lg border border-dashed">
-            <p className="text-muted-foreground">No environments found</p>
           </div>
-        )}
+        </div>
+
+        {/* Controls */}
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="w-full max-w-sm">
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Search CVE, name, app, tag..."
+            />
+          </div>
+          <Tabs
+            value={filter}
+            onValueChange={(v) => setFilter(v as FilterType)}
+          >
+            <TabsList className="border border-border/50 bg-card/80">
+              <TabsTrigger
+                value="all"
+                className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary"
+              >
+                All
+              </TabsTrigger>
+              <TabsTrigger
+                value="downloaded"
+                className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary"
+              >
+                Downloaded
+              </TabsTrigger>
+              <TabsTrigger
+                value="running"
+                className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary"
+              >
+                Running
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
+        {/* Stats bar */}
+        <div className="mb-6 flex items-center gap-4 rounded-lg border border-border/50 bg-card/50 px-4 py-2 backdrop-blur">
+          <div className="flex items-center gap-2">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Results:</span>
+            <span className="text-sm font-medium text-foreground">
+              {totalFiltered}
+            </span>
+          </div>
+          <span className="text-border">/</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Total:</span>
+            <span className="text-sm text-foreground">
+              {data?.total ?? 0}
+            </span>
+          </div>
+        </div>
+
+        {/* Environment Groups */}
+        <div className="space-y-8">
+          {grouped.running.length > 0 && (
+            <section>
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex items-center gap-2 rounded-lg bg-emerald-500/15 px-3 py-1.5">
+                  <Play className="h-4 w-4 text-emerald-500" />
+                  <span className="text-sm font-medium text-emerald-500">
+                    Running
+                  </span>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {grouped.running.length} active
+                </span>
+                <div className="h-px flex-1 bg-gradient-to-r from-emerald-500/30 to-transparent" />
+              </div>
+              <EnvironmentList environments={grouped.running} isLoading={isLoading} />
+            </section>
+          )}
+
+          {grouped.downloaded.length > 0 && (
+            <section>
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex items-center gap-2 rounded-lg bg-cyan-500/15 px-3 py-1.5">
+                  <Download className="h-4 w-4 text-cyan-500" />
+                  <span className="text-sm font-medium text-cyan-500">
+                    Downloaded
+                  </span>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {grouped.downloaded.length} ready
+                </span>
+                <div className="h-px flex-1 bg-gradient-to-r from-cyan-500/30 to-transparent" />
+              </div>
+              <EnvironmentList environments={grouped.downloaded} isLoading={isLoading} />
+            </section>
+          )}
+
+          {grouped.available.length > 0 && (
+            <section>
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5">
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Available
+                  </span>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {grouped.available.length} environments
+                </span>
+                <div className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
+              </div>
+              <EnvironmentList environments={grouped.available} isLoading={isLoading} />
+            </section>
+          )}
+
+          {!isLoading && totalFiltered === 0 && (
+            <div className="flex h-40 flex-col items-center justify-center rounded-lg border border-dashed border-border/50 bg-card/30">
+              <Search className="mb-2 h-8 w-8 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                No environments found
+              </p>
+              {search && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Try adjusting your search query
+                </p>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

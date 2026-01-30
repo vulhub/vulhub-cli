@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Play, Square, RotateCcw, Trash2, Loader2 } from 'lucide-react'
+import { Play, Square, RotateCcw, Trash2, Loader2, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -64,56 +64,66 @@ export function ActionButtons({ path, running, downloaded }: ActionButtonsProps)
               variant="outline"
               onClick={handleStop}
               disabled={isLoading}
+              className="border-amber-400/50 font-mono text-xs uppercase text-amber-400 hover:bg-amber-400/20 hover:text-amber-400"
             >
               {stopMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Square className="h-4 w-4" />
               )}
-              Stop
+              STOP
             </Button>
             <Button
               variant="outline"
               onClick={handleRestart}
               disabled={isLoading}
+              className="border-cyan-400/50 font-mono text-xs uppercase text-cyan-400 hover:bg-cyan-400/20 hover:text-cyan-400"
             >
               {restartMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <RotateCcw className="h-4 w-4" />
               )}
-              Restart
+              RESTART
             </Button>
           </>
         ) : (
-          <Button onClick={handleStart} disabled={isLoading}>
+          <Button
+            onClick={handleStart}
+            disabled={isLoading}
+            className="bg-emerald-500 font-mono text-xs uppercase text-white hover:bg-emerald-400"
+          >
             {startMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Play className="h-4 w-4" />
             )}
-            Start
+            {downloaded ? 'START' : 'DEPLOY'}
           </Button>
         )}
         {downloaded && (
           <Button
-            variant="destructive"
+            variant="outline"
             onClick={() => setCleanDialogOpen(true)}
             disabled={isLoading}
+            className="border-red-400/50 font-mono text-xs uppercase text-red-400 hover:bg-red-400/20 hover:text-red-400"
           >
             <Trash2 className="h-4 w-4" />
-            Clean
+            CLEAN
           </Button>
         )}
       </div>
 
       <Dialog open={cleanDialogOpen} onOpenChange={setCleanDialogOpen}>
-        <DialogContent>
+        <DialogContent className="border-border/50 bg-card">
           <DialogHeader>
-            <DialogTitle>Clean Environment</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to clean this environment? This will remove
-              containers, volumes, and local files.
+            <DialogTitle className="flex items-center gap-2 font-mono text-lg uppercase tracking-wider text-red-400">
+              <AlertTriangle className="h-5 w-5" />
+              Clean Environment
+            </DialogTitle>
+            <DialogDescription className="font-mono text-sm text-muted-foreground">
+              This will permanently remove containers, volumes, and local files.
+              This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -121,18 +131,19 @@ export function ActionButtons({ path, running, downloaded }: ActionButtonsProps)
               variant="outline"
               onClick={() => setCleanDialogOpen(false)}
               disabled={cleanMutation.isPending}
+              className="font-mono text-xs uppercase"
             >
-              Cancel
+              CANCEL
             </Button>
             <Button
-              variant="destructive"
               onClick={handleClean}
               disabled={cleanMutation.isPending}
+              className="bg-red-500 font-mono text-xs uppercase text-white hover:bg-red-600"
             >
               {cleanMutation.isPending && (
                 <Loader2 className="h-4 w-4 animate-spin" />
               )}
-              Clean
+              CONFIRM CLEAN
             </Button>
           </DialogFooter>
         </DialogContent>
