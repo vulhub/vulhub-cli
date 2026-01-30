@@ -2,17 +2,13 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard,
   List,
-  Download,
-  Play,
   Shield,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'All Environments', href: '/environments', icon: List },
-  { name: 'Downloaded', href: '/downloaded', icon: Download },
-  { name: 'Running', href: '/running', icon: Play },
+  { name: 'Environments', href: '/environments', icon: List },
 ]
 
 export function Sidebar() {
