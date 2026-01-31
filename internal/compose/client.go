@@ -49,6 +49,8 @@ type StartOptions struct {
 	ForceRecreate bool
 	// Pull pulls images before starting
 	Pull bool
+	// SkipPortCheck skips automatic port conflict resolution
+	SkipPortCheck bool
 }
 
 // StopOptions defines options for stopping an environment
@@ -105,6 +107,11 @@ func NewComposeClient(composeCommand string, logger *slog.Logger) *ComposeClient
 // Start starts the Docker Compose environment
 func (c *ComposeClient) Start(ctx context.Context, workDir string, options StartOptions) error {
 	c.logger.Debug("starting environment", "workDir", workDir)
+
+	// Resolve port conflicts before starting
+	if !options.SkipPortCheck {
+		_ = resolvePortConflicts(workDir)
+	}
 
 	args := []string{"up"}
 

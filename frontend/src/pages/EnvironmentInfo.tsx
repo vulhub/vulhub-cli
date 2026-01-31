@@ -10,11 +10,63 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { ActionButtons } from '@/components/environments/ActionButtons'
 import { ContainerStatus } from '@/components/environments/ContainerStatus'
 import { useEnvironmentInfo, useEnvironmentStatus } from '@/hooks/useEnvironments'
-import { useState } from 'react'
+import React, { useState } from 'react'
+
+// GitHub repository base URLs for vulhub
+const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/vulhub/vulhub/master'
+const GITHUB_BLOB_BASE = 'https://github.com/vulhub/vulhub/blob/master'
+
+/**
+ * Check if a URL is a relative path (not absolute or protocol-relative)
+ */
+function isRelativePath(url: string | undefined): boolean {
+  if (!url) return false
+  // Absolute URLs or protocol-relative URLs
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('//')) {
+    return false
+  }
+  // Data URLs, mailto, tel, etc.
+  if (url.includes(':')) {
+    return false
+  }
+  // Anchor links
+  if (url.startsWith('#')) {
+    return false
+  }
+  return true
+}
+
+/**
+ * Resolve a relative path to an absolute GitHub URL
+ * @param relativePath - The relative path from the markdown
+ * @param environmentPath - The environment path (e.g., "log4j/CVE-2021-44228")
+ * @param baseUrl - The GitHub base URL to use
+ */
+function resolveGitHubUrl(
+  relativePath: string,
+  environmentPath: string,
+  baseUrl: string
+): string {
+  // Remove leading "./" if present
+  let cleanPath = relativePath.replace(/^\.\//, '')
+  
+  // Handle parent directory references "../"
+  const envParts = environmentPath.split('/')
+  while (cleanPath.startsWith('../')) {
+    cleanPath = cleanPath.slice(3)
+    envParts.pop()
+  }
+  
+  const resolvedEnvPath = envParts.join('/')
+  
+  if (resolvedEnvPath) {
+    return `${baseUrl}/${resolvedEnvPath}/${cleanPath}`
+  }
+  return `${baseUrl}/${cleanPath}`
+}
 
 export function EnvironmentInfo() {
   const { '*': path } = useParams()
@@ -23,8 +75,11 @@ export function EnvironmentInfo() {
   const [tab, setTab] = useState('readme')
 
   const { data: info, isLoading: infoLoading } = useEnvironmentInfo(decodedPath)
+  
+  // Only poll status when environment is downloaded
+  const isDownloaded = info?.downloaded ?? false
   const { data: status, isLoading: statusLoading } =
-    useEnvironmentStatus(decodedPath)
+    useEnvironmentStatus(decodedPath, { enabled: isDownloaded })
 
   if (infoLoading) {
     return (
@@ -56,7 +111,6 @@ export function EnvironmentInfo() {
   }
 
   const isRunning = status?.running ?? false
-  const isDownloaded = info.downloaded
 
   return (
     <div className="relative min-h-full p-6">
@@ -184,57 +238,68 @@ export function EnvironmentInfo() {
               </CardHeader>
               <CardContent className="pt-6">
                 {info.readme ? (
-                  <ScrollArea className="h-[700px]">
-                    <article className="prose prose-lg max-w-none px-2">
+                  <article className="prose prose-lg max-w-none">
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         rehypePlugins={[rehypeRaw]}
                         components={{
-                          // Custom code block rendering with syntax highlighting
-                          code({ node, className, children, ...props }) {
-                            const match = /language-(\w+)/.exec(className || '')
-                            const isInline = !match && !className
-
-                            if (isInline) {
-                              return (
-                                <code
-                                  className="rounded bg-muted px-1.5 py-0.5 font-mono text-sm text-accent"
-                                  {...props}
-                                >
-                                  {children}
-                                </code>
-                              )
-                            }
-
+                          // Code component - preserve className for language detection
+                          code({ children, className, ...props }) {
                             return (
-                              <SyntaxHighlighter
-                                style={oneDark}
-                                language={match ? match[1] : 'text'}
-                                PreTag="div"
-                                customStyle={{
-                                  margin: '1.5rem 0',
-                                  borderRadius: '0.5rem',
-                                  border: '1px solid hsl(217 33% 25%)',
-                                  fontSize: '0.875rem',
-                                }}
-                                codeTagProps={{
-                                  style: {
-                                    fontFamily: "'Fira Code', monospace",
-                                  },
-                                }}
-                              >
-                                {String(children).replace(/\n$/, '')}
-                              </SyntaxHighlighter>
+                              <code className={className} {...props}>
+                                {children}
+                              </code>
                             )
                           },
-                          // Custom link rendering - make URLs clickable
+                          // Code block - use SyntaxHighlighter wrapped in div
+                          pre({ children }) {
+                            // Extract code content and language from children
+                            const codeElement = children as React.ReactElement
+                            const className = codeElement?.props?.className || ''
+                            const match = /language-(\w+)/.exec(className)
+                            const codeContent = codeElement?.props?.children || ''
+
+                            return (
+                              <div className="not-prose my-6">
+                                <SyntaxHighlighter
+                                  style={oneDark}
+                                  language={match ? match[1] : 'text'}
+                                  PreTag="pre"
+                                  customStyle={{
+                                    margin: 0,
+                                    padding: '1rem',
+                                    borderRadius: '0.5rem',
+                                    border: '1px solid hsl(217 33% 25%)',
+                                    fontSize: '0.875rem',
+                                    background: 'hsl(222 47% 9%)',
+                                  }}
+                                  codeTagProps={{
+                                    style: {
+                                      fontFamily: "'Fira Code', 'Consolas', monospace",
+                                    },
+                                  }}
+                                >
+                                  {String(codeContent).replace(/\n$/, '')}
+                                </SyntaxHighlighter>
+                              </div>
+                            )
+                          },
+                          // Custom link rendering - resolve relative paths to GitHub URLs
                           a({ href, children, ...props }) {
+                            let resolvedHref = href
+                            if (isRelativePath(href)) {
+                              resolvedHref = resolveGitHubUrl(
+                                href!,
+                                info.environment.path,
+                                GITHUB_BLOB_BASE
+                              )
+                            }
                             return (
                               <a
-                                href={href}
+                                href={resolvedHref}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-primary hover:underline"
+                                className="text-primary"
                                 {...props}
                               >
                                 {children}
@@ -393,11 +458,20 @@ export function EnvironmentInfo() {
                               </em>
                             )
                           },
-                          // Image
+                          // Image - resolve relative paths to GitHub raw URLs
                           img({ src, alt, ...props }) {
+                            let resolvedSrc = src
+                            if (isRelativePath(src)) {
+                              resolvedSrc = resolveGitHubUrl(
+                                src!,
+                                info.environment.path,
+                                GITHUB_RAW_BASE
+                              )
+                            }
                             return (
                               <img
-                                src={src}
+                                referrerPolicy="no-referrer"
+                                src={resolvedSrc}
                                 alt={alt || ''}
                                 className="my-6 max-w-full rounded-lg border border-border/50"
                                 {...props}
@@ -409,7 +483,6 @@ export function EnvironmentInfo() {
                         {info.readme}
                       </ReactMarkdown>
                     </article>
-                  </ScrollArea>
                 ) : (
                   <p className="font-mono text-sm text-muted-foreground">
                     No README available
@@ -429,8 +502,7 @@ export function EnvironmentInfo() {
               </CardHeader>
               <CardContent className="pt-4">
                 {info.compose_file ? (
-                  <ScrollArea className="h-[600px]">
-                    <SyntaxHighlighter
+                  <SyntaxHighlighter
                       style={oneDark}
                       language="yaml"
                       showLineNumbers
@@ -449,7 +521,6 @@ export function EnvironmentInfo() {
                     >
                       {info.compose_file}
                     </SyntaxHighlighter>
-                  </ScrollArea>
                 ) : (
                   <p className="font-mono text-sm text-muted-foreground">
                     Compose file not available. Start the environment to download

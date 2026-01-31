@@ -35,6 +35,10 @@ func (c *Commands) Start() *cli.Command {
 				Name:  "force-recreate",
 				Usage: "Force recreate containers",
 			},
+			&cli.BoolFlag{
+				Name:  "no-port-check",
+				Usage: "Skip automatic port conflict resolution",
+			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			keyword := cmd.Args().First()
@@ -47,6 +51,7 @@ func (c *Commands) Start() *cli.Command {
 				pull:          cmd.Bool("pull"),
 				build:         cmd.Bool("build"),
 				forceRecreate: cmd.Bool("force-recreate"),
+				skipPortCheck: cmd.Bool("no-port-check"),
 			})
 		},
 	}
@@ -57,6 +62,7 @@ type startOptions struct {
 	pull          bool
 	build         bool
 	forceRecreate bool
+	skipPortCheck bool
 }
 
 func (c *Commands) runStart(ctx context.Context, keyword string, opts startOptions) error {
@@ -110,6 +116,7 @@ func (c *Commands) runStart(ctx context.Context, keyword string, opts startOptio
 		Pull:          opts.pull,
 		Build:         opts.build,
 		ForceRecreate: opts.forceRecreate,
+		SkipPortCheck: opts.skipPortCheck,
 	}
 
 	if err := c.withRateLimitRetry(ctx, func() error {

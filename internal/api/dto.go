@@ -80,6 +80,7 @@ type StartRequest struct {
 	Pull          bool `json:"pull"`
 	Build         bool `json:"build"`
 	ForceRecreate bool `json:"force_recreate"`
+	SkipPortCheck bool `json:"skip_port_check"`
 }
 
 // CleanRequest represents a request to clean an environment

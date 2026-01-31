@@ -210,6 +210,7 @@ func (h *Handlers) StartEnvironment(c *gin.Context) {
 		Pull:          req.Pull,
 		Build:         req.Build,
 		ForceRecreate: req.ForceRecreate,
+		SkipPortCheck: req.SkipPortCheck,
 	}
 
 	if err := h.environment.Start(c.Request.Context(), *env, opts); err != nil {

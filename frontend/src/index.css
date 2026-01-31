@@ -86,6 +86,22 @@
 }
 
 @layer components {
+  /* Remove backticks added by prose for inline code */
+  .prose code::before,
+  .prose code::after {
+    content: none !important;
+  }
+
+  /* Inline code styling - only for code NOT inside pre tags */
+  .prose :not(pre) > code {
+    background: hsl(217 33% 17% / 0.6);
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.9em;
+    color: hsl(217 91% 60%);
+  }
+
   /* Subtle glow effects */
   .glow-primary {
     box-shadow: 0 0 20px hsl(217 91% 60% / 0.15),

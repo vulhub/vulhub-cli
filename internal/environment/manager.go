@@ -22,6 +22,8 @@ type StartOptions struct {
 	Build bool
 	// ForceRecreate forces recreation of containers
 	ForceRecreate bool
+	// SkipPortCheck skips automatic port conflict resolution
+	SkipPortCheck bool
 }
 
 // CleanOptions defines options for cleaning an environment
@@ -75,7 +77,6 @@ type EnvironmentManager struct {
 	configMgr     config.Manager
 	composeClient compose.Client
 	downloader    *github.Downloader
-	logger        *slog.Logger
 }
 
 // NewEnvironmentManager creates a new EnvironmentManager
@@ -83,16 +84,11 @@ func NewEnvironmentManager(
 	configMgr config.Manager,
 	composeClient compose.Client,
 	downloader *github.Downloader,
-	logger *slog.Logger,
 ) *EnvironmentManager {
-	if logger == nil {
-		logger = slog.Default()
-	}
 	return &EnvironmentManager{
 		configMgr:     configMgr,
 		composeClient: composeClient,
 		downloader:    downloader,
-		logger:        logger,
 	}
 }
 
@@ -109,7 +105,7 @@ func (m *EnvironmentManager) Start(ctx context.Context, env types.Environment, o
 		return fmt.Errorf("failed to download environment: %w", err)
 	}
 
-	m.logger.Info("starting environment", "path", env.Path, "workDir", workDir)
+	slog.Info("starting environment", "path", env.Path, "workDir", workDir)
 
 	// Start the environment
 	startOpts := compose.StartOptions{
@@ -117,6 +113,7 @@ func (m *EnvironmentManager) Start(ctx context.Context, env types.Environment, o
 		Pull:          options.Pull,
 		Build:         options.Build,
 		ForceRecreate: options.ForceRecreate,
+		SkipPortCheck: options.SkipPortCheck,
 	}
 
 	if err := m.composeClient.Start(ctx, workDir, startOpts); err != nil {
@@ -134,7 +131,7 @@ func (m *EnvironmentManager) Stop(ctx context.Context, env types.Environment) er
 		return fmt.Errorf("environment %s is not downloaded", env.Path)
 	}
 
-	m.logger.Info("stopping environment", "path", env.Path)
+	slog.Info("stopping environment", "path", env.Path)
 
 	if err := m.composeClient.Stop(ctx, workDir, compose.StopOptions{}); err != nil {
 		return fmt.Errorf("failed to stop environment: %w", err)
@@ -152,7 +149,7 @@ func (m *EnvironmentManager) Down(ctx context.Context, env types.Environment) er
 		return fmt.Errorf("environment %s is not downloaded", env.Path)
 	}
 
-	m.logger.Info("downing environment", "path", env.Path)
+	slog.Info("downing environment", "path", env.Path)
 
 	downOpts := compose.DownOptions{
 		RemoveVolumes: true,
@@ -178,7 +175,7 @@ func (m *EnvironmentManager) Restart(ctx context.Context, env types.Environment)
 		return fmt.Errorf("environment %s is not downloaded", env.Path)
 	}
 
-	m.logger.Info("restarting environment", "path", env.Path)
+	slog.Info("restarting environment", "path", env.Path)
 
 	if err := m.composeClient.Restart(ctx, workDir, compose.RestartOptions{}); err != nil {
 		return fmt.Errorf("failed to restart environment: %w", err)
@@ -198,7 +195,7 @@ func (m *EnvironmentManager) Status(ctx context.Context, env types.Environment) 
 	containers, err := m.composeClient.Status(ctx, status.LocalPath)
 	if err != nil {
 		// Not an error if no containers exist
-		m.logger.Debug("failed to get container status", "error", err)
+		slog.Debug("failed to get container status", "error", err)
 		return status, nil
 	}
 
@@ -214,7 +211,7 @@ func (m *EnvironmentManager) Status(ctx context.Context, env types.Environment) 
 func (m *EnvironmentManager) Clean(ctx context.Context, env types.Environment, options CleanOptions) error {
 	workDir := m.configMgr.Paths().EnvironmentDir(env.Path)
 
-	m.logger.Info("cleaning environment", "path", env.Path)
+	slog.Info("cleaning environment", "path", env.Path)
 
 	// Run docker compose down if environment exists
 	if m.IsDownloaded(env) {
@@ -226,7 +223,7 @@ func (m *EnvironmentManager) Clean(ctx context.Context, env types.Environment, o
 		}
 
 		if err := m.composeClient.Down(ctx, workDir, downOpts); err != nil {
-			m.logger.Warn("failed to run docker compose down", "error", err)
+			slog.Warn("failed to run docker compose down", "error", err)
 		}
 	}
 
@@ -263,7 +260,7 @@ func (m *EnvironmentManager) ListRunning(ctx context.Context) ([]types.Environme
 
 		status, err := m.Status(ctx, env)
 		if err != nil {
-			m.logger.Debug("failed to get status", "path", env.Path, "error", err)
+			slog.Debug("failed to get status", "path", env.Path, "error", err)
 			continue
 		}
 
@@ -298,7 +295,7 @@ func (m *EnvironmentManager) ListDownloaded(ctx context.Context) ([]types.Enviro
 
 		status, err := m.Status(ctx, env)
 		if err != nil {
-			m.logger.Debug("failed to get status", "path", env.Path, "error", err)
+			slog.Debug("failed to get status", "path", env.Path, "error", err)
 			continue
 		}
 
@@ -316,16 +313,39 @@ func (m *EnvironmentManager) GetInfo(ctx context.Context, env types.Environment)
 		LocalPath:   m.configMgr.Paths().EnvironmentDir(env.Path),
 	}
 
-	// Try to get README content
-	readme, err := m.downloader.GetEnvironmentReadme(ctx, env)
-	if err == nil {
-		info.Readme = readme
+	// If environment is downloaded, read from local files first
+	if info.Downloaded {
+		// Try to read README from local
+		readmePath := filepath.Join(info.LocalPath, "README.md")
+		if data, err := os.ReadFile(readmePath); err == nil {
+			info.Readme = string(data)
+		}
+
+		// Try to read compose file from local
+		composePath := filepath.Join(info.LocalPath, "docker-compose.yml")
+		if data, err := os.ReadFile(composePath); err == nil {
+			info.ComposeFile = string(data)
+		}
+
+		// If we have both files locally, no need to call GitHub API
+		if info.Readme != "" && info.ComposeFile != "" {
+			return info, nil
+		}
 	}
 
-	// Try to get compose file content
-	compose, err := m.downloader.GetEnvironmentComposeFile(ctx, env)
-	if err == nil {
-		info.ComposeFile = compose
+	// Fall back to GitHub API for missing content
+	if info.Readme == "" {
+		readme, err := m.downloader.GetEnvironmentReadme(ctx, env)
+		if err == nil {
+			info.Readme = readme
+		}
+	}
+
+	if info.ComposeFile == "" {
+		compose, err := m.downloader.GetEnvironmentComposeFile(ctx, env)
+		if err == nil {
+			info.ComposeFile = compose
+		}
 	}
 
 	return info, nil
@@ -338,11 +358,11 @@ func (m *EnvironmentManager) EnsureDownloaded(ctx context.Context, env types.Env
 	// Check if already downloaded
 	composeFile := filepath.Join(destDir, "docker-compose.yml")
 	if _, err := os.Stat(composeFile); err == nil {
-		m.logger.Debug("environment already downloaded", "path", env.Path)
+		slog.Debug("environment already downloaded", "path", env.Path)
 		return destDir, nil
 	}
 
-	m.logger.Info("downloading environment", "path", env.Path)
+	slog.Info("downloading environment", "path", env.Path)
 
 	// Create directory
 	if err := m.configMgr.Paths().EnsureEnvironmentDir(env.Path); err != nil {

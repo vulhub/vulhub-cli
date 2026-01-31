@@ -62,15 +62,19 @@ export function useEnvironmentInfo(path: string) {
     queryKey: queryKeys.info(path),
     queryFn: () => getEnvironmentInfo(path),
     enabled: !!path,
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    retry: false, // Don't retry on error (e.g., 404)
   })
 }
 
-export function useEnvironmentStatus(path: string) {
+export function useEnvironmentStatus(path: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: queryKeys.status(path),
     queryFn: () => getEnvironmentStatus(path),
-    enabled: !!path,
-    refetchInterval: 5000,
+    enabled: !!path && (options?.enabled ?? true),
+    refetchInterval: 5000, // Poll every 5 seconds (only when enabled)
+    retry: false, // Don't retry on error
   })
 }
 
@@ -106,9 +110,11 @@ export function useStartEnvironment() {
     mutationFn: ({ path, options }: { path: string; options?: StartRequest }) =>
       startEnvironment(path, options),
     onSuccess: (_, { path }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.environments })
       queryClient.invalidateQueries({ queryKey: queryKeys.downloaded })
       queryClient.invalidateQueries({ queryKey: queryKeys.running })
       queryClient.invalidateQueries({ queryKey: queryKeys.status(path) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.info(path) })
       toast({
         title: 'Environment started',
         description: `${path} is now running.`,
@@ -131,9 +137,11 @@ export function useStopEnvironment() {
   return useMutation({
     mutationFn: (path: string) => stopEnvironment(path),
     onSuccess: (_, path) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.environments })
       queryClient.invalidateQueries({ queryKey: queryKeys.downloaded })
       queryClient.invalidateQueries({ queryKey: queryKeys.running })
       queryClient.invalidateQueries({ queryKey: queryKeys.status(path) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.info(path) })
       toast({
         title: 'Environment stopped',
         description: `${path} has been stopped.`,
@@ -156,9 +164,11 @@ export function useRestartEnvironment() {
   return useMutation({
     mutationFn: (path: string) => restartEnvironment(path),
     onSuccess: (_, path) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.environments })
       queryClient.invalidateQueries({ queryKey: queryKeys.downloaded })
       queryClient.invalidateQueries({ queryKey: queryKeys.running })
       queryClient.invalidateQueries({ queryKey: queryKeys.status(path) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.info(path) })
       toast({
         title: 'Environment restarted',
         description: `${path} has been restarted.`,
@@ -182,6 +192,7 @@ export function useCleanEnvironment() {
     mutationFn: ({ path, options }: { path: string; options?: CleanRequest }) =>
       cleanEnvironment(path, options),
     onSuccess: (_, { path }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.environments })
       queryClient.invalidateQueries({ queryKey: queryKeys.downloaded })
       queryClient.invalidateQueries({ queryKey: queryKeys.running })
       queryClient.invalidateQueries({ queryKey: queryKeys.info(path) })

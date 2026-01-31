@@ -3,6 +3,8 @@ package cli
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"os"
 
 	"github.com/urfave/cli/v3"
 
@@ -51,6 +53,15 @@ func NewApp(
 			},
 		},
 		Before: func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
+			// Configure log level based on verbose flag
+			if cmd.Bool("verbose") {
+				handler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+					Level: slog.LevelDebug,
+				})
+				slog.SetDefault(slog.New(handler))
+				slog.Debug("verbose mode enabled")
+			}
+
 			// Configure proxy if specified via CLI flag (highest priority)
 			proxyURL := cmd.String("proxy")
 			if proxyURL != "" {
